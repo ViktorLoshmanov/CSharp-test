@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj": {}
+    "C:\\Project\\CSharp-test\\apiTest.csproj": {}
   },
   "projects": {
-    "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj": {
+    "C:\\Project\\CSharp-test\\apiTest.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj",
+        "projectUniqueName": "C:\\Project\\CSharp-test\\apiTest.csproj",
         "projectName": "apiTest",
-        "projectPath": "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj",
+        "projectPath": "C:\\Project\\CSharp-test\\apiTest.csproj",
         "packagesPath": "C:\\Users\\Kulibin\\.nuget\\packages\\",
-        "outputPath": "C:\\Project\\C-net7vsNodeJs\\obj\\",
+        "outputPath": "C:\\Project\\CSharp-test\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

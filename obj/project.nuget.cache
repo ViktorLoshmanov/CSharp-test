@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "E7WotzCyjpk=",
+  "dgSpecHash": "Ma2y7/IOYgI=",
   "success": true,
-  "projectFilePath": "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj",
+  "projectFilePath": "C:\\Project\\CSharp-test\\apiTest.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Kulibin\\.nuget\\packages\\benchmarkdotnet\\0.15.8\\benchmarkdotnet.0.15.8.nupkg.sha512",
     "C:\\Users\\Kulibin\\.nuget\\packages\\benchmarkdotnet.annotations\\0.15.8\\benchmarkdotnet.annotations.0.15.8.nupkg.sha512",
@@ -40,9 +40,9 @@
       "code": "NU1510",
       "level": "Warning",
       "message": "PackageReference Microsoft.Extensions.Logging will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.",
-      "projectPath": "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj",
+      "projectPath": "C:\\Project\\CSharp-test\\apiTest.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Project\\C-net7vsNodeJs\\apiTest.csproj",
+      "filePath": "C:\\Project\\CSharp-test\\apiTest.csproj",
       "libraryId": "Microsoft.Extensions.Logging",
       "targetGraphs": [
         "net10.0"
