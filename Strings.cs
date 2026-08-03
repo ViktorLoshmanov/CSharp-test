@@ -3,7 +3,7 @@
 public class Strings
 {
     public unsafe static int CompareUnsafe(string s1, string s2)
-    {
+    {   
         (var ne1, var ne2) = (string.IsNullOrEmpty(s1), string.IsNullOrEmpty(s2));
 
         if (ne1 && ne2) return 0;
@@ -24,12 +24,14 @@ public class Strings
                     (var num1, var num2) = (*p1 - '0', *p2 - '0');
                     p1++; p2++;
 
+                    // Читаем остальные цифры первого числа
                     while (*p1 >= '0' && *p1 <= '9')
                     {
                         num1 = 10 * num1 + *p1 - '0';
                         p1++;
                     }
-
+                    
+                    // Читаем остальные цифры второго числа
                     while (*p2 >= '0' && *p2 <= '9')
                     {
                         num2 = 10 * num2 + *p2 - '0';
@@ -40,6 +42,7 @@ public class Strings
                 }
                 else
                 {
+                    // Сравниваем как символы
                     if (*p1 != *p2) return (*p1 > *p2) ? 1 : -1;
 
                     p1++; p2++;

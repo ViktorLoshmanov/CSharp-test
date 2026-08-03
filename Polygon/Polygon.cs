@@ -50,22 +50,19 @@ internal static class Polygon
             }
             else if (px1 > left && px2 < left)
             {
-                // pl.Add(px1);
-                // pl.Add(py1);
-
                 pl.Add(left);
                 pl.Add((left - px1) * (py2 - py1) / (px2 - px1) + py1);
             }
-            px1 = px2;
-            py1 = py2;
+            (px1, py1) = (px2, py2);
+             
         }
 
-        return pl.ToArray();
+        return [.. pl];
     }
     private static double[] ClipRight(double[] coords, double right)
     {
         if (coords.Length == 0) return coords;
-                
+
         var pl = new List<double>(coords.Length * 2);
         var curIndex = 0;
 
@@ -103,16 +100,15 @@ internal static class Polygon
                 pl.Add(right);
                 pl.Add((right - px1) * (py2 - py1) / (px2 - px1) + py1);
             }
-            px1 = px2;
-            py1 = py2;
+            (px1, py1) = (px2, py2);
         }
 
-        return pl.ToArray();
+        return [.. pl];
     }
     private static double[] ClipBottom(double[] coords, double bottom)
     {
         if (coords.Length == 0) return coords;
-        
+
         var pl = new List<double>(coords.Length * 2);
         var curIndex = 0;
 
@@ -145,26 +141,18 @@ internal static class Polygon
             }
             else if (py1 > bottom && py2 < bottom)
             {
-                // pl.Add(px1);
-                // pl.Add(py1);
-
                 pl.Add((bottom - py1) * (px2 - px1) / (py2 - py1) + px1);
                 pl.Add(bottom);
-
-                // res.Add(pl);
-
-                // pl = [];
             }
-            px1 = px2;
-            py1 = py2;
+            (px1, py1) = (px2, py2);
         }
 
-        return pl.ToArray();
+        return [.. pl];
     }
     private static double[] ClipTop(double[] coords, double top)
     {
         if (coords.Length == 0) return coords;
-        
+
         var pl = new List<double>(coords.Length * 2);
         var curIndex = 0;
 
@@ -186,15 +174,7 @@ internal static class Polygon
             {
                 pl.Add(px2);
                 pl.Add(py2);
-            }
-            else if (py1 < top && py2 > top)
-            {
-                // pl.Add(px1);
-                // pl.Add(py1);
-
-                pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
-                pl.Add(top);
-            }
+            }            
             else if (py1 > top && py2 < top)
             {
                 pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
@@ -203,23 +183,24 @@ internal static class Polygon
                 pl.Add(px2);
                 pl.Add(py2);
             }
+            else if (py1 < top && py2 > top)
+            {
+                pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
+                pl.Add(top);
+            }
 
-            px1 = px2;
-            py1 = py2;
+            (px1, py1) = (px2, py2);
         }
 
-        return pl.ToArray();
+        return [.. pl];
     }
 
     /** Отсечение полигона по прямоугольнику */
     public static double[] ClipPolygon(IPrimitive g, Rect rect)
     {
-        double[] res;
-
-        if (g.Rect.Left < rect.Left)
-            res = ClipLeft(g.Coords, rect.Left);
-        else
-            res = (double[])g.Coords.Clone();
+        var res = (g.Rect.Left < rect.Left)
+            ? ClipLeft(g.Coords, rect.Left)
+            : (double[])g.Coords.Clone();
 
         if (g.Rect.Bottom < rect.Bottom)
             res = ClipBottom(res, rect.Bottom);
@@ -230,7 +211,7 @@ internal static class Polygon
         if (g.Rect.Top > rect.Top)
             res = ClipTop(res, rect.Top);
 
-        return res.ToArray();
+        return [.. res];
     }
 }
 

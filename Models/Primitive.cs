@@ -3,7 +3,7 @@
 /** Приметив графического образа */
 public class IPrimitive
 {
-    /** Координаты приметива  */
+    /** Координаты примитива  */
     public double[] Coords { get; set; } = null!;
     public double TextCoordX { get; set; }
     public double TextCoordY { get; set; }

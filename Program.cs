@@ -1,49 +1,69 @@
-using apiTest;
+﻿using apiTest;
 using drawer;
 using drawer.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using Swashbuckle.AspNetCore.Annotations;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+//builder.Services.ConfigureHttpJsonOptions(options => {
+//    //options.SerializerOptions.WriteIndented = true;
+//    //options.SerializerOptions.IncludeFields = true;
+//    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+//    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+//});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "Тест REST C#",
+        Version = "v1"
+    });
+});
+
 
 var app = builder.Build();
 
 Init.tt();
 
+
 app.MapGet("/", () => "Hello World dotnet!");
 
-app.MapGet("/readfile", () => File.ReadAllText("data.txt"));
+app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"));
 
 app.MapGet("/fibonacci", () =>
 {
-    var a = 0.0;
-    var b = 1.0;
-    var c = 0.0;
+    var (a, b) = (0.0, 1.0);
     for (var i = 2; i < 2000000; i++)
-    {
-        c = a + b;
-        a = b;
-        b = c;
-    }
+        (a, b) = (b, a + b);
 
     return a.ToString();
 });
 
+
 var pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100 };
 var rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
+
+
 app.MapGet("/map", (double x, double y) =>
 {
     x /= 100;
     y /= 100;
 
-    var pr1 = new DrawProperties1()
+    var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
         Scale = pr.Scale,
-        LeftTop = new Vector<double>(new double[] { pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y })
+        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
-    var rect1 = new Rect()
+    var rect1 = new Rect
     {
         Left = rect.Left + x,
         Top = rect.Top + y,
@@ -58,75 +78,14 @@ app.MapGet("/map", (double x, double y) =>
         ref rect1);
 
     return result.Length;
-    #region
-    //return System.Text.Json.JsonSerializer.Serialize(result).Length;
-
-    //using var ms = new MemoryStream();
-    //await Utf8Json.JsonSerializer.SerializeAsync(ms, result);
-    //return ms.Length;
-
-    //var sw = new StringWriter();
-    //var w = new JsonTextWriter(sw);
-    //w.WriteStartArray();
-    //for (var i = 0; i < result.Length; i++)
-    //{
-    //    w.WriteStartObject();
-
-    //    w.WritePropertyName("LegendId");
-    //    w.WriteValue(result[i].LegendId);
-
-    //    w.WritePropertyName("Coords");
-    //    w.WriteStartArray();
-
-    //    foreach (var css in result[i].Coords)
-    //    {
-    //        w.WriteStartArray();
-    //        for (var j = 0; j < css.Length; j++)
-    //            w.WriteValue(css[j]);
-    //        w.WriteEndArray();
-    //    }
-
-    //    w.WriteEndArray();
-
-    //    w.WriteEndObject();
-    //}
-
-    //w.WriteEndArray();
-
-    //return sw.ToString().Length;
-
-    //var sb = new StringBuilder(1000000);
-    //sb.Append('[');
-    //for (var i = 0; i < result.Length; i++)
-    //{
-    //    sb.Append("{\"LegendId\":");
-    //    sb.Append(result[i].LegendId);
-    //    sb.Append(",\"Coords\":[");
-    //    var coords = result[i].Coords;
-    //    foreach (var css in coords)
-    //    {
-    //        sb.Append('[');
-    //        for (var j = 0; j < css.Length; j++)
-    //        {
-
-    //            sb.Append(css[j]);
-    //            sb.Append(',');
-    //        }
-    //        sb.Append("],");
-    //    }
-    //    sb.Length--;
-    //    sb.Append("]},");
-    //}
-    //sb.Length--;
-
-    //sb.Append(']');
-    //return sb.Length;
-    #endregion
-
-});
+})
+    .WithTags("Map")
+    .WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
+    .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    .Produces<int>(StatusCodes.Status200OK);
 
 
-app.MapGet("/mapJSON", (double x, double y) =>
+app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
 {
     x /= 100;
     y /= 100;
@@ -135,10 +94,10 @@ app.MapGet("/mapJSON", (double x, double y) =>
     {
         Mashtab = pr.Mashtab,
         Scale = pr.Scale,
-        LeftTop = new Vector<double>(new double[] { pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y })
+        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
-    var rect1 = new Rect()
+    var rect1 = new Rect
     {
         Left = rect.Left + x,
         Top = rect.Top + y,
@@ -151,37 +110,13 @@ app.MapGet("/mapJSON", (double x, double y) =>
         ref pr1,
         ref rect1);
 
-    return System.Text.Json.JsonSerializer.Serialize(result).Length;    
-});
 
-app.MapGet("/mapMyJSON", (double x, double y) =>
-{
-    x /= 100;
-    y /= 100;
-
-    var pr1 = new DrawProperties1()
-    {
-        Mashtab = pr.Mashtab,
-        Scale = pr.Scale,
-        LeftTop = new Vector<double>(new double[] { pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y })
-    };
-
-    var rect1 = new Rect()
-    {
-        Left = rect.Left + x,
-        Top = rect.Top + y,
-        Bottom = rect.Bottom,
-        Right = rect.Right
-    };
-
-    var result = Drawer.Build(
-        Init.ls,
-        ref pr1,
-        ref rect1);
-        
-    return result.ToJson().Length;
-
-});
+    return result.Take(5);
+})
+    .WithTags("Map")
+    .WithSummary("Получение преобразованных геоданных")
+    .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    .Produces<ILayer[]>(StatusCodes.Status200OK); 
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -193,6 +128,13 @@ app.MapGet("/naturalsort", () =>
         result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
 
     return result;
-});
+})
+    .WithTags("String")
+    .WithSummary("Натуральное сравнение 10000 строк")
+    .WithDescription("Фукнция используется в натуральной сортировке");
+
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.Run();

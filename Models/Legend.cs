@@ -136,6 +136,7 @@ public enum FontStyleEnum
 
     Strikeout = 0x8
 }
+
 /** Графические свойства условного обозначения */
 public class ILegendBlock
 {

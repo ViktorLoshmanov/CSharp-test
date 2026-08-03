@@ -15,7 +15,7 @@ public static class Init
     {
         var json = File.ReadAllText(@"C:\Project\angular\angular-canvas\src\assets\primitives.json");
                 
-        ls = JsonConvert.DeserializeObject<ILegend[]>(json)!;        
+        ls = JsonConvert.DeserializeObject<ILegend[]>(json)!;
 
         //ls = ls.ToList()
         //       .OrderBy(l => l.Priority)
