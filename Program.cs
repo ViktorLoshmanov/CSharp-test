@@ -1,6 +1,7 @@
 ﻿using apiTest;
 using drawer;
 using drawer.Models;
+using LinkDotNet.StringBuilder;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Swashbuckle.AspNetCore.Annotations;
@@ -39,7 +40,7 @@ app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"));
 
 app.MapGet("/fibonacci", () =>
 {
-    var (a, b) = (0.0, 1.0);
+    var (a, b) = (0UL, 1UL);
     for (var i = 2; i < 2000000; i++)
         (a, b) = (b, a + b);
 
@@ -116,7 +117,7 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
     .WithTags("Map")
     .WithSummary("Получение преобразованных геоданных")
     .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-    .Produces<ILayer[]>(StatusCodes.Status200OK); 
+    .Produces<ILayer[]>(StatusCodes.Status200OK);
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -125,7 +126,40 @@ app.MapGet("/naturalsort", () =>
 {
     var result = 0;
     for (var i = 0; i < 10000; i++)
-        result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
+    {
+        //result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
+        //result += Strings.CompareSafe(STR1 + i, STR2 + i);
+        result += Strings.CompareIterator(STR1 + i, STR2 + i);
+    }
+
+    return result;
+})
+    .WithTags("String")
+    .WithSummary("Натуральное сравнение 10000 строк")
+    .WithDescription("Фукнция используется в натуральной сортировке");
+
+
+app.MapGet("/naturalsortHack", () =>
+{
+    var result = 0;
+    using var vsb1 = new ValueStringBuilder(stackalloc char[128]);
+    using var vsb2 = new ValueStringBuilder(stackalloc char[128]);
+
+    for (var i = 0; i < 10000; i++)
+    {
+        vsb1.Clear();
+        vsb1.Append(STR1);
+        vsb1.Append(i);
+
+        vsb2.Clear();
+        vsb2.Append(STR2);
+        vsb2.Append(i);
+
+
+        //result += Strings.CompareSBIterator(vsb1, vsb2);
+
+        result += Strings.CompareSBSafe(vsb1, vsb2);
+    }
 
     return result;
 })

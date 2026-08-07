@@ -13,7 +13,7 @@ public static class Init
 
     static Init()
     {
-        var json = File.ReadAllText(@"primitives.json");
+        var json = File.ReadAllText(@"C:\Project\angular\angular-canvas\src\assets\primitives.json");
                 
         ls = JsonConvert.DeserializeObject<ILegend[]>(json)!;
 
