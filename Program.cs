@@ -127,9 +127,9 @@ app.MapGet("/naturalsort", () =>
     var result = 0;
     for (var i = 0; i < 10000; i++)
     {
-        //result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
+        result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
         //result += Strings.CompareSafe(STR1 + i, STR2 + i);
-        result += Strings.CompareIterator(STR1 + i, STR2 + i);
+        //result += Strings.CompareIterator(STR1 + i, STR2 + i);
     }
 
     return result;
