@@ -200,7 +200,7 @@ internal static class Polygon
     {
         var res = (g.Rect.Left < rect.Left)
             ? ClipLeft(g.Coords, rect.Left)
-            : (double[])g.Coords.Clone();
+            : [.. g.Coords];
 
         if (g.Rect.Bottom < rect.Bottom)
             res = ClipBottom(res, rect.Bottom);
@@ -211,7 +211,7 @@ internal static class Polygon
         if (g.Rect.Top > rect.Top)
             res = ClipTop(res, rect.Top);
 
-        return [.. res];
+        return res;
     }
 }
 

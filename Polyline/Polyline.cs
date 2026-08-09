@@ -203,7 +203,7 @@ public static class Polyline
     {
         var res = (g.Rect.Left < rect.Left)
             ? ClipLeft(g.Coords, rect.Left)
-            : [(double[])g.Coords.Clone()];
+            : [[..g.Coords]];
 
         if (g.Rect.Bottom < rect.Bottom)
         {

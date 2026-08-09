@@ -51,8 +51,34 @@ app.MapGet("/fibonacci", () =>
 var pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100 };
 var rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
 
+//unsafe int Map(double x = 0, double y = 0)
+//{
+//    x /= 100;
+//    y /= 100;
 
-app.MapGet("/map", (double x, double y) =>
+//    var arr = stackalloc double[] { pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y };
+//    var mas = new ReadOnlySpan<double>(arr, 4);
+
+//    var pr1 = new DrawProperties1
+//    {
+//        Mashtab = pr.Mashtab,
+//        Scale = pr.Scale,
+//        LeftTop = new Vector<double>(mas)
+//    };
+
+//    var rect1 = new Rect
+//    {
+//        Left = rect.Left + x,
+//        Top = rect.Top + y,
+//        Bottom = rect.Bottom,
+//        Right = rect.Right
+//    };
+
+//    return Drawer.BuildGenerator(Init.ls, pr1, rect1)
+//        .Count();
+//}
+
+app.MapGet("/map", (double x = 0, double y = 0) =>
 {
     x /= 100;
     y /= 100;
@@ -72,14 +98,10 @@ app.MapGet("/map", (double x, double y) =>
         Right = rect.Right
     };
 
-
-    var result = Drawer.Build(
-        Init.ls,
-        ref pr1,
-        ref rect1);
-
-    return result.Length;
+    return Drawer.BuildGenerator(Init.ls, pr1, rect1)
+        .Count();
 })
+//app.MapGet("/map", Map)
     .WithTags("Map")
     .WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
     .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
@@ -106,13 +128,8 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
         Right = rect.Right
     };
 
-    var result = Drawer.Build(
-        Init.ls,
-        ref pr1,
-        ref rect1);
-
-
-    return result.Take(5);
+    return Drawer.Build(Init.ls, ref pr1, ref rect1)
+        .Take(5);
 })
     .WithTags("Map")
     .WithSummary("Получение преобразованных геоданных")
@@ -154,9 +171,6 @@ app.MapGet("/naturalsortHack", () =>
         vsb2.Clear();
         vsb2.Append(STR2);
         vsb2.Append(i);
-
-
-        //result += Strings.CompareSBIterator(vsb1, vsb2);
 
         result += Strings.CompareSBSafe(vsb1, vsb2);
     }

@@ -33,7 +33,7 @@ public struct ILayer
     /** Уникальный идентификатор */
     public Int64 LegendId { get; set; }
     /** Координаты для отрисовки */
-    public IObraz[] Obrazes { get; set; } = null!;
+    public IList<IObraz> Obrazes { get; set; } = null!;
 
     public ILayer()
     {
@@ -47,7 +47,17 @@ public struct IObraz
     public string Name { get; set; }
 
     /** Координаты графического образа */
-    public double[] Coords { get; set; }
+    public double[] Coords { get; set; }    
 }
+
+/** Данные для отображения */
+//public struct IObrazResult
+//{
+//    /** Имя графического образа */
+//    public string Name { get; set; }
+
+//    /** Координаты графического образа */
+//    public IList<double> Coords { get; set; }
+//}
 
 

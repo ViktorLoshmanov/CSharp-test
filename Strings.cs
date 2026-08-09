@@ -263,7 +263,7 @@ public class Strings
                 if (num1 != num2) return num1 > num2 ? 1 : -1;
             }
             // Сравниваем как символы
-            else if(char1 != char2)
+            else if (char1 != char2)
                 return (char1 > char2) ? 1 : -1;
         }
 

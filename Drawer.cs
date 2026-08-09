@@ -18,13 +18,12 @@ internal static class Drawer
                 // Целиком лежит внутри прямоугольника
                 yield return new IObraz { Coords = [.. g.Coords], Name = g.Name };
             else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
-            {
                 // Необходимо отсекать
                 switch (l.Type)
                 {
                     case GrTypeEnum.Line:
                         foreach (var cs in Polyline.ClipPolyline(g, rect))
-                            yield return new IObraz { Coords = cs, Name = g.Name };
+                            yield return new IObraz { Coords = [..cs], Name = g.Name };
                         break;
                     case GrTypeEnum.Polygon:
                         {
@@ -34,7 +33,7 @@ internal static class Drawer
                         }
                         break;
                 }
-            }
+
     }
 
     /// <summary>
@@ -43,7 +42,7 @@ internal static class Drawer
     /// <param name="ls">Слои</param>
     /// <param name="pr">Свойства отрисовки</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
+    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>    
     public static ILayer[] Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
     {
         var result = new List<ILayer>(ls.Length);
@@ -55,12 +54,15 @@ internal static class Drawer
 
             var mas = new List<IObraz>();
 
+            var i = 0;
             foreach (var obraz in ClipPrimitives(l, rect))
             {
-                var csOpt = Calc.Optimize(obraz.Coords, mashtab);
-                Calc.Translate(csOpt, pr);
+                var csOpt = obraz.Coords
+                     .Optimize(mashtab)
+                     .Translate(pr);
 
                 mas.Add(new IObraz { Name = obraz.Name, Coords = csOpt });
+                i++;
             }
 
             result.Add(new() { LegendId = l.Id, Obrazes = [.. mas] });
@@ -68,5 +70,44 @@ internal static class Drawer
 
         return [.. result];
 
+    }
+
+    /// <summary>
+    /// Подготовка данных для отрисовки
+    /// </summary>
+    /// <param name="ls">Слои</param>
+    /// <param name="pr">Свойства отрисовки</param>
+    /// <param name="rect">Прямоугольник для отсечения</param>
+    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
+    //public static List<ILayer> Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
+    public static IEnumerable<ILayer> BuildGenerator(ILegend[] ls, DrawProperties1 pr, Rect rect)
+    {
+        //var result = new List<ILayer>(ls.Length);
+        var mashtab = 1 / pr.Scale;
+
+        foreach (var l in ls)
+        {
+            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
+
+            var mas = new List<IObraz>();
+
+            var i = 0;
+            foreach (var obraz in ClipPrimitives(l, rect))
+            {
+                mas.Add(new IObraz
+                {
+                    Name = obraz.Name,
+                    Coords = obraz.Coords
+                        .Optimize(mashtab)
+                        .Translate(pr)
+                });
+                i++;
+            }
+
+            //result.Add(new() { LegendId = l.Id, Obrazes = mas });
+            yield return new() { LegendId = l.Id, Obrazes = mas };
+        }
+
+        //return result;
     }
 }
