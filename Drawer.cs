@@ -23,12 +23,12 @@ internal static class Drawer
                 {
                     case GrTypeEnum.Line:
                         foreach (var cs in Polyline.ClipPolyline(g, rect))
-                            yield return new IObraz { Coords = [..cs], Name = g.Name };
+                            yield return new IObraz { Coords = cs, Name = g.Name };
                         break;
                     case GrTypeEnum.Polygon:
                         {
                             var cs = Polygon.ClipPolygon(g, rect);
-                            if (cs.Length > 0)
+                            if (cs.Count > 0)
                                 yield return new IObraz { Coords = cs, Name = g.Name };
                         }
                         break;
@@ -43,46 +43,10 @@ internal static class Drawer
     /// <param name="pr">Свойства отрисовки</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Результат отсечения и преобразования к экранным координатам</returns>    
-    public static ILayer[] Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
+    //public static ILayer[] Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
+    public static List<ILayer> Build(ILegend[] ls, DrawProperties1 pr, Rect rect)
     {
         var result = new List<ILayer>(ls.Length);
-        var mashtab = 1 / pr.Scale;
-
-        foreach (var l in ls)
-        {
-            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
-
-            var mas = new List<IObraz>();
-
-            var i = 0;
-            foreach (var obraz in ClipPrimitives(l, rect))
-            {
-                var csOpt = obraz.Coords
-                     .Optimize(mashtab)
-                     .Translate(pr);
-
-                mas.Add(new IObraz { Name = obraz.Name, Coords = csOpt });
-                i++;
-            }
-
-            result.Add(new() { LegendId = l.Id, Obrazes = [.. mas] });
-        }
-
-        return [.. result];
-
-    }
-
-    /// <summary>
-    /// Подготовка данных для отрисовки
-    /// </summary>
-    /// <param name="ls">Слои</param>
-    /// <param name="pr">Свойства отрисовки</param>
-    /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
-    //public static List<ILayer> Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
-    public static IEnumerable<ILayer> BuildGenerator(ILegend[] ls, DrawProperties1 pr, Rect rect)
-    {
-        //var result = new List<ILayer>(ls.Length);
         var mashtab = 1 / pr.Scale;
 
         foreach (var l in ls)
@@ -98,16 +62,53 @@ internal static class Drawer
                 {
                     Name = obraz.Name,
                     Coords = obraz.Coords
-                        .Optimize(mashtab)
+                       .Optimize(mashtab)
+                       .Translate(pr)
+                });
+                i++;
+            }
+
+            //result.Add(new() { LegendId = l.Id, Obrazes = [.. mas] });
+            result.Add(new() { LegendId = l.Id, Obrazes = mas });
+        }
+
+        //return [.. result];
+        return result;
+
+    }
+
+    /// <summary>
+    /// Подготовка данных для отрисовки
+    /// </summary>
+    /// <param name="ls">Слои</param>
+    /// <param name="pr">Свойства отрисовки</param>
+    /// <param name="rect">Прямоугольник для отсечения</param>
+    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
+
+    public static IEnumerable<ILayer> BuildGenerator(ILegend[] ls, DrawProperties1 pr, Rect rect)
+    {   
+        var distance = 1 / pr.Scale;
+
+        foreach (var l in ls)
+        {
+            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
+
+            var mas = new List<IObraz>();
+
+            var i = 0;
+            foreach (var obraz in ClipPrimitives(l, rect))
+            {
+                mas.Add(new IObraz
+                {
+                    Name = obraz.Name,
+                    Coords = obraz.Coords
+                        .Optimize(distance)
                         .Translate(pr)
                 });
                 i++;
             }
 
-            //result.Add(new() { LegendId = l.Id, Obrazes = mas });
             yield return new() { LegendId = l.Id, Obrazes = mas };
         }
-
-        //return result;
     }
 }

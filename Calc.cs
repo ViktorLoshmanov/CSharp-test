@@ -1,4 +1,5 @@
-﻿using drawer.Models;
+﻿using BenchmarkDotNet.Disassemblers;
+using drawer.Models;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -9,42 +10,47 @@ namespace drawer;
 
 internal static class Calc
 {
-    readonly static double[] Neg8 = [1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0];
-    // public static Vector<double> NegY = new([1, -1, 1, -1]);
-
     /** Преобразование в систему координат экрана */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double[] Translate(this double[] cs, DrawProperties1 pr)
+    public static List<double> Translate(this List<double> mas, DrawProperties1 pr)
     {
-        var count = cs.Length - cs.Length % 4;
+        var count = mas.Count - mas.Count % 4;
+        var scale = pr.Scale;
+        var scaleVector = new Vector<double>([scale, -scale, scale, -scale]);
+        var cs = CollectionsMarshal.AsSpan(mas);
 
         for (var i = 0; i < count; i += 4)
         {
-            var v = new Vector<double>(cs, i);
-            var result = (v - pr.LeftTop) * pr.Scale;
-            cs[i] = result[0];
-            cs[i + 1] = -result[1];
-            cs[i + 2] = result[2];
-            cs[i + 3] = -result[3];
+            var chank = cs[i..(i + 4)];
+            var v = new Vector<double>(chank);
+            var result = (v - pr.LeftTop) * scaleVector;
+            result.CopyTo(chank);
+
+            //var v = new Vector<double>(cs, i);
+            //var result = (v - pr.LeftTop) * pr.Scale;
+            //cs[i] = result[0];
+            //cs[i + 1] = -result[1];
+            //cs[i + 2] = result[2];
+            //cs[i + 3] = -result[3];
         }
 
-        if (count >= cs.Length) return cs;
+        if (count >= mas.Count) return mas;
 
-        cs[^2] = (cs[^2] - pr.LeftTop[0]) * pr.Scale;
-        cs[^1] = (pr.LeftTop[1] - cs[^1]) * pr.Scale;
+        cs[^2] = (cs[^2] - pr.LeftTop[0]) * scale;
+        cs[^1] = (pr.LeftTop[1] - cs[^1]) * scale;
 
-        return cs;
+        return mas;
     }
 
     /** Удаление точек которые не будут отображаться */
-    public static double[] Optimize(this double[] mas, double l)
+    public static List<double> Optimize(this List<double> mas, double l)
     {
-        var count = mas.Length;
+        var count = mas.Count;
         if (count < 5) return mas;
 
-        var coords = new List<double>(mas.Length);
+        var coords = new List<double>(mas.Count);
 
-        var sp = mas.AsSpan();
+        var sp = CollectionsMarshal.AsSpan(mas);
 
         var lastCoord1 = sp[..2];
         var lastCoord2 = sp.Slice(2, 2);
@@ -63,7 +69,7 @@ internal static class Calc
 
         coords.AddRange(sp.Slice(count - 2, 2));
 
-        return [..coords];
+        return coords;
     }
 
 

@@ -1,9 +1,56 @@
 ﻿using LinkDotNet.StringBuilder;
+using mimalloc;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+//using ImeSense.Packages.Mimalloc.Runtime;
+//using mimalloc;
 
 namespace apiTest;
 
 public class Strings
 {
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static int CompareUnsafe(char* p1, char* p2)
+    {
+        while (*p1 != 0)
+        {
+            if (*p2 == 0) return 1;
+
+            if (*p1 >= '0' && *p1 <= '9' && *p2 >= '0' && *p2 <= '9')
+            {
+                var (num1, num2) = (*p1 - '0', *p2 - '0');
+                p1++; p2++;
+
+                // Читаем остальные цифры первого числа
+                while (*p1 >= '0' && *p1 <= '9')
+                {
+                    num1 = 10 * num1 + *p1 - '0';
+                    p1++;
+                }
+
+                // Читаем остальные цифры второго числа
+                while (*p2 >= '0' && *p2 <= '9')
+                {
+                    num2 = 10 * num2 + *p2 - '0';
+                    p2++;
+                }
+
+                if (num1 != num2) return num1 > num2 ? 1 : -1;
+            }
+            else
+            {
+                // Сравниваем как символы
+                if (*p1 != *p2) return (*p1 > *p2) ? 1 : -1;
+
+                p1++; p2++;
+            }
+        }
+
+        return *p2 == 0 ? 0 : -1;
+    }
+
     public unsafe static int CompareUnsafe(string s1, string s2)
     {
         var (ne1, ne2) = (string.IsNullOrEmpty(s1), string.IsNullOrEmpty(s2));
@@ -13,46 +60,7 @@ public class Strings
         if (ne2) return 1;
 
         fixed (char* pointer1 = s1, pointer2 = s2)
-        {
-            var p1 = pointer1;
-            var p2 = pointer2;
-
-            while (*p1 != 0)
-            {
-                if (*p2 == 0) return 1;
-
-                if (*p1 >= '0' && *p1 <= '9' && *p2 >= '0' && *p2 <= '9')
-                {
-                    var (num1, num2) = (*p1 - '0', *p2 - '0');
-                    p1++; p2++;
-
-                    // Читаем остальные цифры первого числа
-                    while (*p1 >= '0' && *p1 <= '9')
-                    {
-                        num1 = 10 * num1 + *p1 - '0';
-                        p1++;
-                    }
-
-                    // Читаем остальные цифры второго числа
-                    while (*p2 >= '0' && *p2 <= '9')
-                    {
-                        num2 = 10 * num2 + *p2 - '0';
-                        p2++;
-                    }
-
-                    if (num1 != num2) return num1 > num2 ? 1 : -1;
-                }
-                else
-                {
-                    // Сравниваем как символы
-                    if (*p1 != *p2) return (*p1 > *p2) ? 1 : -1;
-
-                    p1++; p2++;
-                }
-            }
-
-            return *p2 == 0 ? 0 : -1;
-        }
+            return CompareUnsafe(pointer1, pointer2);
     }
 
     public static int CompareSafe(string s1, string s2)
@@ -270,4 +278,128 @@ public class Strings
         return i2 == count2 ? 0 : -1;
     }
 
+}
+
+public static class Strings2
+{
+    private static readonly char[] _singleDigitCharCache =
+        { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+
+    public static unsafe int UInt32ToBuffer(uint number, char[] result)
+    {
+        var numberLength = CountDigits(number);
+        if (numberLength == 1)
+            result[0] = _singleDigitCharCache[number];
+        else
+            fixed (char* buffer = result)
+            {
+                var p = buffer + numberLength;
+                UInt32ToDecChars(p, number);
+            }
+
+        return numberLength;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe void UInt32ToDecChars(char* bufferEnd, uint value)
+    {
+        do
+        {
+            var quotient = value / 10;
+            (value, var remainder) = (quotient, value - quotient * 10);
+
+            *--bufferEnd = (char)(remainder + '0');
+        }
+        while (value != 0);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CountDigits(uint value)
+    {
+        var digits = 1;
+        if (value >= 100_000)
+        {
+            value /= 100_000;
+            digits += 5;
+        }
+
+        return value switch
+        {
+            < 10 => digits,
+            < 100 => digits + 1,
+            < 1000 => digits + 2,
+            < 10_000 => digits + 3,
+            _ => digits + 4
+        };
+    }
+}
+
+public struct MimAllocString
+{
+    IntPtr Buffer;
+    int Length = 0;
+    uint Copacity = 0;
+
+    public unsafe MimAllocString(uint copacity)
+    {
+        this.Copacity = copacity;
+        Buffer = (IntPtr)MiMalloc.mi_malloc(copacity * 2);
+    }
+
+    public unsafe MimAllocString(string s, uint copacity) : this(copacity < s.Length ? (uint)s.Length : copacity)
+    {
+        fixed (char* source = s)
+            Copy((char*)Buffer, source, s.Length);
+    }
+
+    private unsafe void ReAlloc(uint copacity)
+    {
+        if (copacity <= Copacity) return;
+
+        var newBuffer = (char*)MiMalloc.mi_malloc((uint)(copacity * 2));
+        Copy(newBuffer, (char*)Buffer, Length);
+
+        MiMalloc.mi_free((void*)Buffer);
+        Buffer = (IntPtr)newBuffer;
+        Copacity = copacity;
+
+    }
+
+    public static unsafe MimAllocString operator +(MimAllocString mS, string s)
+    {
+        var len = mS.Length + s.Length;
+        mS.ReAlloc((uint)len);
+
+        fixed (char* pointer = s)
+            Copy((char*)mS.Buffer + mS.Length, pointer, s.Length);
+
+        mS.Length = len;
+
+        return mS;
+    }
+
+    public static unsafe MimAllocString operator +(MimAllocString mS, char[] mas, int length)
+    {
+        var len = mS.Length + length;
+        mS.ReAlloc((uint)len);
+
+        fixed (char* pointer = mas)
+            Copy((char*)mS.Buffer + mS.Length, pointer, length);
+
+        mS.Length = len;
+
+        return mS;
+    }
+
+    private static unsafe void Copy(char* r, char* s, int len)
+    {
+        for (int i = 0; i < len; i++)
+            r[i] = s[i];
+    }
+
+
+    public unsafe void Dispose()
+    {
+        MiMalloc.mi_free((void*)Buffer);
+    }
 }

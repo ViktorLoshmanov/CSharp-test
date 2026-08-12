@@ -14,9 +14,8 @@ public class LayerConverter : JsonConverter<ILayer>
     }
 
     public override void Write(Utf8JsonWriter writer, ILayer layer, JsonSerializerOptions options)
-    {
-
-        var charSpan = (new char[32]).AsSpan();
+    {   
+        Span<char> charSpan = stackalloc char[128];
         writer.WriteStartObject();
 
         writer.WriteNumber("legendId", layer.LegendId);
@@ -37,6 +36,7 @@ public class LayerConverter : JsonConverter<ILayer>
                 //var celoe = (int)c;
                 //var drobnoe = (int)((c - celoe) * 10000);
                 //writer.WriteRawValue($"{celoe}.{drobnoe}");
+
                 writer.WriteRawValue(RyuDotNet.Ryu.WriteTo(c, charSpan), true);
 
                 //writtenLength = Ryu.d2s_buffered_n(c, ref charSpan[0]);

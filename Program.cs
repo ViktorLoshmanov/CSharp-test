@@ -2,21 +2,10 @@
 using drawer;
 using drawer.Models;
 using LinkDotNet.StringBuilder;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using Swashbuckle.AspNetCore.Annotations;
 using System.Numerics;
-using System.Text;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//builder.Services.ConfigureHttpJsonOptions(options => {
-//    //options.SerializerOptions.WriteIndented = true;
-//    //options.SerializerOptions.IncludeFields = true;
-//    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-//    options.SerializerOptions.PropertyNameCaseInsensitive = true;
-//});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -36,7 +25,9 @@ Init.tt();
 
 app.MapGet("/", () => "Hello World dotnet!");
 
-app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"));
+app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"))
+    .WithSummary("Чтение файла")
+    .Produces<string>(StatusCodes.Status200OK);
 
 app.MapGet("/fibonacci", () =>
 {
@@ -50,33 +41,6 @@ app.MapGet("/fibonacci", () =>
 
 var pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100 };
 var rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
-
-//unsafe int Map(double x = 0, double y = 0)
-//{
-//    x /= 100;
-//    y /= 100;
-
-//    var arr = stackalloc double[] { pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y };
-//    var mas = new ReadOnlySpan<double>(arr, 4);
-
-//    var pr1 = new DrawProperties1
-//    {
-//        Mashtab = pr.Mashtab,
-//        Scale = pr.Scale,
-//        LeftTop = new Vector<double>(mas)
-//    };
-
-//    var rect1 = new Rect
-//    {
-//        Left = rect.Left + x,
-//        Top = rect.Top + y,
-//        Bottom = rect.Bottom,
-//        Right = rect.Right
-//    };
-
-//    return Drawer.BuildGenerator(Init.ls, pr1, rect1)
-//        .Count();
-//}
 
 app.MapGet("/map", (double x = 0, double y = 0) =>
 {
@@ -128,7 +92,7 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
         Right = rect.Right
     };
 
-    return Drawer.Build(Init.ls, ref pr1, ref rect1)
+    return Drawer.Build(Init.ls, pr1, rect1)
         .Take(5);
 })
     .WithTags("Map")
@@ -152,7 +116,7 @@ app.MapGet("/naturalsort", () =>
     return result;
 })
     .WithTags("String")
-    .WithSummary("Натуральное сравнение 10000 строк")
+    .WithSummary("Натуральное сравнение 10000 пар строк")
     .WithDescription("Фукнция используется в натуральной сортировке");
 
 
