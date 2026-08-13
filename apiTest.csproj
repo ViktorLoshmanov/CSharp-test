@@ -8,20 +8,18 @@
     <Platforms>AnyCPU;x64</Platforms>
     
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
     
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageReference Include="ImeSense.Packages.Mimalloc.Runtimes" Version="2.1.7.3" />
-    <PackageReference Include="ImeSense.Packages.Mimalloc.Runtimes.win-x64" Version="2.1.7.3" />
     <PackageReference Include="LinkDotNet.StringBuilder" Version="3.4.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
     <PackageReference Include="mimalloc-csharp" Version="1.0.7" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Ryu.NET" Version="20.7.18" />
-    <PackageReference Include="RyuCsharp" Version="0.0.2" />
+    <!--<PackageReference Include="Ryu.NET" Version="20.7.18" />
+    <PackageReference Include="RyuCsharp" Version="0.0.2" />-->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
     <PackageReference Include="Utf8Json" Version="1.3.7" />

@@ -63,6 +63,17 @@ public class Strings
             return CompareUnsafe(pointer1, pointer2);
     }
 
+    public unsafe static int CompareUnsafe(MimAllocString s1, MimAllocString s2)
+    {
+        var (ne1, ne2) = (s1.Length == 0, s2.Length == 0);
+
+        if (ne1 && ne2) return 0;
+        if (ne1) return -1;
+        if (ne2) return 1;
+
+        return CompareUnsafe(s1.AsCharPointer(), s2.AsCharPointer());
+    }
+
     public static int CompareSafe(string s1, string s2)
     {
         var (ne1, ne2) = (string.IsNullOrEmpty(s1), string.IsNullOrEmpty(s2));
@@ -223,13 +234,28 @@ public class Strings
     }
 
 
-    public static int CompareSBSafe(ValueStringBuilder s1, ValueStringBuilder s2)
+    public static unsafe int CompareSBUnSafe(ValueStringBuilder s1, ValueStringBuilder s2)
     {
         var (ne1, ne2) = (s1.IsEmpty, s2.IsEmpty);
 
         if (ne1 && ne2) return 0;
         if (ne1) return -1;
         if (ne2) return 1;
+
+        fixed (char* pointer1 = s1.AsSpan(), pointer2 = s2.AsSpan())
+            return CompareUnsafe(pointer1, pointer2);
+    }
+
+    public static int CompareSBSafe(ValueStringBuilder s11, ValueStringBuilder s21)
+    {
+        var (ne1, ne2) = (s11.IsEmpty, s21.IsEmpty);
+
+        if (ne1 && ne2) return 0;
+        if (ne1) return -1;
+        if (ne2) return 1;
+
+        var s1 = s11.AsSpan();
+        var s2 = s21.AsSpan();        
 
         var (count1, count2) = (s1.Length, s2.Length);
         var (i1, i2) = (0, 0);
@@ -280,24 +306,76 @@ public class Strings
 
 }
 
-public static class Strings2
-{
-    private static readonly char[] _singleDigitCharCache =
-        { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
-    public static unsafe int UInt32ToBuffer(uint number, char[] result)
+public struct MimAllocString
+{
+    private static readonly char[] _singleDigitCharCache = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+    public int Length { get; private set; } = 0;
+    private IntPtr Buffer;
+    private uint Copacity = 0;
+
+    public unsafe MimAllocString(uint copacity)
+    {
+        Copacity = copacity;
+        Buffer = (IntPtr)MiMalloc.mi_malloc(copacity * 2 + 2);
+    }
+
+    public unsafe MimAllocString(string s, uint copacity) : this(copacity < s.Length ? (uint)s.Length : copacity)
+    {
+        s.AsSpan().CopyTo(new Span<char>((char*)Buffer, Length));
+        Length = s.Length;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly unsafe void Dispose()
+    {
+        MiMalloc.mi_free((void*)Buffer);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private unsafe void ReAlloc(uint copacity)
+    {
+        if (copacity <= Copacity) return;
+
+        var newBuffer = (char*)MiMalloc.mi_malloc(copacity * 2 + 2);
+
+        new Span<char>((char*)Buffer, Length).CopyTo(new Span<char>(newBuffer, Length));
+
+        MiMalloc.mi_free((void*)Buffer);
+        Buffer = (IntPtr)newBuffer;
+        Copacity = copacity;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Add(string s) => Add(s.AsSpan());
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe void Add(ReadOnlySpan<char> chars)
+    {
+        //var len = Length + chars.Length;
+        //ReAlloc((uint)len);
+
+        chars.CopyTo(new Span<char>((char*)Buffer + Length, chars.Length));
+
+        //Length = len;
+        Length += chars.Length;
+    }
+
+    public unsafe void Add(uint number)
     {
         var numberLength = CountDigits(number);
-        if (numberLength == 1)
-            result[0] = _singleDigitCharCache[number];
-        else
-            fixed (char* buffer = result)
-            {
-                var p = buffer + numberLength;
-                UInt32ToDecChars(p, number);
-            }
+        //var len = Length + numberLength;
+        //ReAlloc((uint)len);
 
-        return numberLength;
+        var pointer = (char*)Buffer + Length;
+
+        Length += numberLength;
+
+        if (numberLength == 1)
+            *pointer = _singleDigitCharCache[number];
+        else
+            UInt32ToDecChars(pointer + numberLength, number);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -306,7 +384,7 @@ public static class Strings2
         do
         {
             var quotient = value / 10;
-            (value, var remainder) = (quotient, value - quotient * 10);
+            (value, var remainder) = (quotient, value % 10);
 
             *--bufferEnd = (char)(remainder + '0');
         }
@@ -332,74 +410,10 @@ public static class Strings2
             _ => digits + 4
         };
     }
-}
 
-public struct MimAllocString
-{
-    IntPtr Buffer;
-    int Length = 0;
-    uint Copacity = 0;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly unsafe char* AsCharPointer() => (char*)Buffer;
 
-    public unsafe MimAllocString(uint copacity)
-    {
-        this.Copacity = copacity;
-        Buffer = (IntPtr)MiMalloc.mi_malloc(copacity * 2);
-    }
-
-    public unsafe MimAllocString(string s, uint copacity) : this(copacity < s.Length ? (uint)s.Length : copacity)
-    {
-        fixed (char* source = s)
-            Copy((char*)Buffer, source, s.Length);
-    }
-
-    private unsafe void ReAlloc(uint copacity)
-    {
-        if (copacity <= Copacity) return;
-
-        var newBuffer = (char*)MiMalloc.mi_malloc((uint)(copacity * 2));
-        Copy(newBuffer, (char*)Buffer, Length);
-
-        MiMalloc.mi_free((void*)Buffer);
-        Buffer = (IntPtr)newBuffer;
-        Copacity = copacity;
-
-    }
-
-    public static unsafe MimAllocString operator +(MimAllocString mS, string s)
-    {
-        var len = mS.Length + s.Length;
-        mS.ReAlloc((uint)len);
-
-        fixed (char* pointer = s)
-            Copy((char*)mS.Buffer + mS.Length, pointer, s.Length);
-
-        mS.Length = len;
-
-        return mS;
-    }
-
-    public static unsafe MimAllocString operator +(MimAllocString mS, char[] mas, int length)
-    {
-        var len = mS.Length + length;
-        mS.ReAlloc((uint)len);
-
-        fixed (char* pointer = mas)
-            Copy((char*)mS.Buffer + mS.Length, pointer, length);
-
-        mS.Length = len;
-
-        return mS;
-    }
-
-    private static unsafe void Copy(char* r, char* s, int len)
-    {
-        for (int i = 0; i < len; i++)
-            r[i] = s[i];
-    }
-
-
-    public unsafe void Dispose()
-    {
-        MiMalloc.mi_free((void*)Buffer);
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly unsafe Span<char> AsSpan() => new((char*)Buffer, Length);
 }

@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Disassemblers;
+﻿//using BenchmarkDotNet.Disassemblers;
 using drawer.Models;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -12,12 +12,12 @@ internal static class Calc
 {
     /** Преобразование в систему координат экрана */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static List<double> Translate(this List<double> mas, DrawProperties1 pr)
+    public static double[] Translate(this double[] mas, DrawProperties1 pr)
     {
-        var count = mas.Count - mas.Count % 4;
+        var count = mas.Length - mas.Length % 4;
         var scale = pr.Scale;
         var scaleVector = new Vector<double>([scale, -scale, scale, -scale]);
-        var cs = CollectionsMarshal.AsSpan(mas);
+        var cs = mas.AsSpan();
 
         for (var i = 0; i < count; i += 4)
         {
@@ -34,7 +34,7 @@ internal static class Calc
             //cs[i + 3] = -result[3];
         }
 
-        if (count >= mas.Count) return mas;
+        if (count >= mas.Length) return mas;
 
         cs[^2] = (cs[^2] - pr.LeftTop[0]) * scale;
         cs[^1] = (pr.LeftTop[1] - cs[^1]) * scale;
@@ -43,14 +43,14 @@ internal static class Calc
     }
 
     /** Удаление точек которые не будут отображаться */
-    public static List<double> Optimize(this List<double> mas, double l)
+    public static double[] Optimize(this double[] mas, double l)
     {
-        var count = mas.Count;
+        var count = mas.Length;
         if (count < 5) return mas;
 
-        var coords = new List<double>(mas.Count);
+        var coords = new List<double>(mas.Length);
 
-        var sp = CollectionsMarshal.AsSpan(mas);
+        var sp = mas.AsSpan();
 
         var lastCoord1 = sp[..2];
         var lastCoord2 = sp.Slice(2, 2);
@@ -69,7 +69,7 @@ internal static class Calc
 
         coords.AddRange(sp.Slice(count - 2, 2));
 
-        return coords;
+        return [..coords];
     }
 
 

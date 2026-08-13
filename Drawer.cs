@@ -28,7 +28,7 @@ internal static class Drawer
                     case GrTypeEnum.Polygon:
                         {
                             var cs = Polygon.ClipPolygon(g, rect);
-                            if (cs.Count > 0)
+                            if (cs.Length > 0)
                                 yield return new IObraz { Coords = cs, Name = g.Name };
                         }
                         break;

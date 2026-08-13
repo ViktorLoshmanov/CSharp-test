@@ -2,20 +2,23 @@
 using drawer;
 using drawer.Models;
 using LinkDotNet.StringBuilder;
+using Microsoft.Extensions.Options;
 using System.Numerics;
 
-var builder = WebApplication.CreateBuilder(args);
+//var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
 
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new()
-    {
-        Title = "Тест REST C#",
-        Version = "v1"
-    });
-});
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.SwaggerDoc("v1", new()
+//    {
+//        Title = "Тест REST C#",
+//        Version = "v1"
+//    });
+//});
 
 
 var app = builder.Build();
@@ -64,12 +67,12 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
 
     return Drawer.BuildGenerator(Init.ls, pr1, rect1)
         .Count();
-})
+});
 //app.MapGet("/map", Map)
-    .WithTags("Map")
-    .WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
-    .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-    .Produces<int>(StatusCodes.Status200OK);
+//.WithTags("Map")
+//.WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
+//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+//.Produces<int>(StatusCodes.Status200OK);
 
 
 app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
@@ -94,11 +97,11 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
 
     return Drawer.Build(Init.ls, pr1, rect1)
         .Take(5);
-})
-    .WithTags("Map")
-    .WithSummary("Получение преобразованных геоданных")
-    .WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-    .Produces<ILayer[]>(StatusCodes.Status200OK);
+});
+//.WithTags("Map")
+//.WithSummary("Получение преобразованных геоданных")
+//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+//.Produces<ILayer[]>(StatusCodes.Status200OK);
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -114,10 +117,33 @@ app.MapGet("/naturalsort", () =>
     }
 
     return result;
-})
-    .WithTags("String")
-    .WithSummary("Натуральное сравнение 10000 пар строк")
-    .WithDescription("Фукнция используется в натуральной сортировке");
+});
+//.WithTags("String")
+//.WithSummary("Натуральное сравнение 10000 пар строк")
+//.WithDescription("Фукнция используется в натуральной сортировке");
+
+
+app.MapGet("/naturalsortblazing", () =>
+{
+    var result = 0;
+    for (var i = 0U; i < 10000U; i++)
+    {
+        var s1 = new MimAllocString((uint)STR1.Length + 20U);
+        s1.Add(STR1);
+        s1.Add(i);
+
+        var s2 = new MimAllocString((uint)STR1.Length + 20U);
+        s1.Add(STR2);
+        s1.Add(i);
+
+        result += Strings.CompareUnsafe(s1, s2);
+
+        s1.Dispose();
+        s2.Dispose();
+    }
+
+    return result;
+});
 
 
 app.MapGet("/naturalsortHack", () =>
@@ -136,17 +162,17 @@ app.MapGet("/naturalsortHack", () =>
         vsb2.Append(STR2);
         vsb2.Append(i);
 
-        result += Strings.CompareSBSafe(vsb1, vsb2);
+        result += Strings.CompareSBUnSafe(vsb1, vsb2);
     }
 
     return result;
-})
-    .WithTags("String")
-    .WithSummary("Натуральное сравнение 10000 строк")
-    .WithDescription("Фукнция используется в натуральной сортировке");
+});
+//.WithTags("String")
+//.WithSummary("Натуральное сравнение 10000 строк")
+//.WithDescription("Фукнция используется в натуральной сортировке");
 
 
-app.UseSwagger();
-app.UseSwaggerUI();
+//app.UseSwagger();
+//app.UseSwaggerUI();
 
 app.Run();
