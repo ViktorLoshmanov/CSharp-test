@@ -40,24 +40,39 @@ public struct ILayer
 
     }
 }
+
+public struct ILayerResult
+{
+    /** Уникальный идентификатор */
+    public Int64 LegendId { get; set; }
+    /** Координаты для отрисовки */
+    public IList<IObrazResult> Obrazes { get; set; } = null!;
+
+    public ILayerResult()
+    {
+
+    }
+}
+
 /** Данные для отображения */
 public struct IObraz
+{
+    /** Имя графического образа */
+    public string Name { get; set; } = null!;
+
+    /** Координаты графического образа */
+    public double[] Coords { get; set; } = null!;
+    public IObraz() { }
+}
+
+/** Данные для отображения */
+public struct IObrazResult
 {
     /** Имя графического образа */
     public string Name { get; set; }
 
     /** Координаты графического образа */
-    public double[] Coords { get; set; }    
+    public Memory<double> Coords { get; set; }
 }
-
-/** Данные для отображения */
-//public struct IObrazResult
-//{
-//    /** Имя графического образа */
-//    public string Name { get; set; }
-
-//    /** Координаты графического образа */
-//    public IList<double> Coords { get; set; }
-//}
 
 

@@ -1,8 +1,10 @@
 ﻿using apiTest;
+using apiTest.Arena;
 using drawer;
 using drawer.Models;
 using LinkDotNet.StringBuilder;
 using Microsoft.Extensions.Options;
+using System.Buffers;
 using System.Numerics;
 
 //var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +77,33 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
 //.Produces<int>(StatusCodes.Status200OK);
 
 
+app.MapGet("/mapBlazing", (double x = 0, double y = 0) =>
+{
+    x /= 100;
+    y /= 100;
+
+    var pr1 = new DrawProperties1
+    {
+        Mashtab = pr.Mashtab,
+        Scale = pr.Scale,
+        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
+    };
+
+    var rect1 = new Rect
+    {
+        Left = rect.Left + x,
+        Top = rect.Top + y,
+        Bottom = rect.Bottom,
+        Right = rect.Right
+    };
+
+    using var allocator = ArenaAllocator<double>.Get();
+
+    return Init.ls.BuildBlazing(allocator, pr1, rect1)
+        .Count();
+});
+
+
 app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
 {
     x /= 100;
@@ -95,13 +124,42 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
         Right = rect.Right
     };
 
-    return Drawer.Build(Init.ls, pr1, rect1)
+    return Drawer.BuildGenerator(Init.ls, pr1, rect1)
+        .ToArray()
         .Take(5);
 });
 //.WithTags("Map")
 //.WithSummary("Получение преобразованных геоданных")
 //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
 //.Produces<ILayer[]>(StatusCodes.Status200OK);
+
+app.MapGet("/mapJSONBlazing", (double x = 0, double y = 0) =>
+{
+    x /= 100;
+    y /= 100;
+
+    var pr1 = new DrawProperties1()
+    {
+        Mashtab = pr.Mashtab,
+        Scale = pr.Scale,
+        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
+    };
+
+    var rect1 = new Rect
+    {
+        Left = rect.Left + x,
+        Top = rect.Top + y,
+        Bottom = rect.Bottom,
+        Right = rect.Right
+    };
+
+    using var allocator = ArenaAllocator<double>.Get();
+
+    return Init.ls.BuildBlazing(allocator, pr1, rect1)
+        .ToArray()
+        .Take(5);
+
+});
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -124,13 +182,14 @@ app.MapGet("/naturalsort", () =>
 
 
 app.MapGet("/naturalsortblazing", () =>
-{
+{    
     var result = 0;
     for (var i = 0U; i < 10000U; i++)
     {
         var s1 = new MimAllocString((uint)STR1.Length + 20U);
         s1.Add(STR1);
         s1.Add(i);
+
 
         var s2 = new MimAllocString((uint)STR1.Length + 20U);
         s1.Add(STR2);
@@ -140,6 +199,7 @@ app.MapGet("/naturalsortblazing", () =>
 
         s1.Dispose();
         s2.Dispose();
+
     }
 
     return result;

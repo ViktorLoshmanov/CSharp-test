@@ -1,6 +1,9 @@
 ﻿//using BenchmarkDotNet.Disassemblers;
+using apiTest.Arena;
 using drawer.Models;
+using System.Buffers;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -8,30 +11,44 @@ using System.Runtime.Intrinsics.X86;
 
 namespace drawer;
 
+public static class ListAdapter<T>
+{
+    private static readonly FieldInfo _arrayField = typeof(System.Collections.Generic.List<T>)
+        .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+        .Single(x => x.FieldType == typeof(T[]));
+
+    public static Memory<T> ToMemory(System.Collections.Generic.List<T> list)
+    {
+        T[] array = (T[])_arrayField.GetValue(list);
+        return array.AsMemory(0, list.Count);
+
+        //return Memory<T>.Create(array, 0, list.Count);
+    }
+}
+
 internal static class Calc
 {
-    /** Преобразование в систему координат экрана */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double[] Translate(this double[] mas, DrawProperties1 pr)
+    public static Memory<double> Translate(this Memory<double> mas, DrawProperties1 pr)
     {
         var count = mas.Length - mas.Length % 4;
         var scale = pr.Scale;
-        var scaleVector = new Vector<double>([scale, -scale, scale, -scale]);
-        var cs = mas.AsSpan();
+        //var scaleVector = new Vector<double>([scale, -scale, scale, -scale]);
+        var cs = mas.Span;
 
         for (var i = 0; i < count; i += 4)
         {
             var chank = cs[i..(i + 4)];
-            var v = new Vector<double>(chank);
-            var result = (v - pr.LeftTop) * scaleVector;
-            result.CopyTo(chank);
+            //var v = new Vector<double>(chank);
+            //var result = (v - pr.LeftTop) * scaleVector;
+            //result.CopyTo(chank);
 
-            //var v = new Vector<double>(cs, i);
-            //var result = (v - pr.LeftTop) * pr.Scale;
-            //cs[i] = result[0];
-            //cs[i + 1] = -result[1];
-            //cs[i + 2] = result[2];
-            //cs[i + 3] = -result[3];
+            var v = new Vector<double>(chank);
+            var result = (v - pr.LeftTop) * scale;
+            cs[i] = result[0];
+            cs[i + 1] = -result[1];
+            cs[i + 2] = result[2];
+            cs[i + 3] = -result[3];
         }
 
         if (count >= mas.Length) return mas;
@@ -43,12 +60,12 @@ internal static class Calc
     }
 
     /** Удаление точек которые не будут отображаться */
-    public static double[] Optimize(this double[] mas, double l)
+    public static Memory<double> Optimize(this double[] mas, double l)
     {
         var count = mas.Length;
         if (count < 5) return mas;
 
-        var coords = new List<double>(mas.Length);
+        var coords = new System.Collections.Generic.List<double>(mas.Length);
 
         var sp = mas.AsSpan();
 
@@ -69,7 +86,44 @@ internal static class Calc
 
         coords.AddRange(sp.Slice(count - 2, 2));
 
-        return [..coords];
+        return ListAdapter<double>.ToMemory(coords);
+    }
+
+
+    /** Удаление точек которые не будут отображаться */
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Memory<double> Optimize(this Memory<double> mas, ArenaAllocator<double> allocator, double l)
+    {
+        if (mas.Length < 5) return mas;
+
+        var result = allocator.Alloc(mas.Length);
+
+        var sp = mas.Span;
+        var coords = result.Span;
+
+        var lastCoord1 = sp[..2];
+        var lastCoord2 = sp.Slice(2, 2);
+
+        var index = 0;
+        coords[index++] = lastCoord1[0];
+        coords[index++] = lastCoord1[1];
+        var lSq = l * l;
+
+        for (var i = 4; i < mas.Length; i += 2)
+            if (!IsPointOnLine(lastCoord1, lastCoord2, sp.Slice(i, 2), lSq))
+            {
+                lastCoord1 = sp.Slice(i - 2, 2);
+                lastCoord2 = sp.Slice(i, 2);
+
+                coords[index++] = lastCoord1[0];
+                coords[index++] = lastCoord1[1];
+            }
+
+        coords[index++] = sp[^2];
+        coords[index++] = sp[^1];
+
+
+        return result[..index];
     }
 
 

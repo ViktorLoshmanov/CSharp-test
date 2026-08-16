@@ -63,6 +63,17 @@ public class Strings
             return CompareUnsafe(pointer1, pointer2);
     }
 
+    public unsafe static int CompareUnsafe(Arena.List<char> s1, Arena.List<char> s2)
+    {
+        var (ne1, ne2) = (s1.Count == 0, s2.Count == 0);
+
+        if (ne1 && ne2) return 0;
+        if (ne1) return -1;
+        if (ne2) return 1;
+        fixed (char* pointer1 = s1.AsSpan(), pointer2 = s2.AsSpan())
+            return CompareUnsafe(pointer1, pointer2);
+    }
+
     public unsafe static int CompareUnsafe(MimAllocString s1, MimAllocString s2)
     {
         var (ne1, ne2) = (s1.Length == 0, s2.Length == 0);
