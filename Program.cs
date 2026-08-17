@@ -30,9 +30,9 @@ Init.tt();
 
 app.MapGet("/", () => "Hello World dotnet!");
 
-app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"))
-    .WithSummary("Чтение файла")
-    .Produces<string>(StatusCodes.Status200OK);
+app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"));
+    //.WithSummary("Чтение файла")
+    //.Produces<string>(StatusCodes.Status200OK);
 
 app.MapGet("/fibonacci", () =>
 {
@@ -55,7 +55,8 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
-        Scale = pr.Scale,
+        //Scale = pr.Scale,
+        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -70,11 +71,10 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
     return Drawer.BuildGenerator(Init.ls, pr1, rect1)
         .Count();
 });
-//app.MapGet("/map", Map)
-//.WithTags("Map")
-//.WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
-//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-//.Produces<int>(StatusCodes.Status200OK);
+    //.WithTags("Map")
+    //.WithSummary("Получение преобразованных геоданных (тест без реального ответа)")
+    //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    //.Produces<int>(StatusCodes.Status200OK);
 
 
 app.MapGet("/mapBlazing", (double x = 0, double y = 0) =>
@@ -85,7 +85,8 @@ app.MapGet("/mapBlazing", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
-        Scale = pr.Scale,
+        //Scale = pr.Scale,
+        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -102,6 +103,10 @@ app.MapGet("/mapBlazing", (double x = 0, double y = 0) =>
     return Init.ls.BuildBlazing(allocator, pr1, rect1)
         .Count();
 });
+    //.WithTags("Map")
+    //.WithSummary("Blazing Получение преобразованных геоданных (тест без реального ответа)")
+    //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    //.Produces<int>(StatusCodes.Status200OK);
 
 
 app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
@@ -112,7 +117,7 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1()
     {
         Mashtab = pr.Mashtab,
-        Scale = pr.Scale,
+        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -128,10 +133,10 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
         .ToArray()
         .Take(5);
 });
-//.WithTags("Map")
-//.WithSummary("Получение преобразованных геоданных")
-//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-//.Produces<ILayer[]>(StatusCodes.Status200OK);
+    //.WithTags("Map")
+    //.WithSummary("Получение преобразованных геоданных")
+    //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    //.Produces<ILayer[]>(StatusCodes.Status200OK);
 
 app.MapGet("/mapJSONBlazing", (double x = 0, double y = 0) =>
 {
@@ -141,7 +146,7 @@ app.MapGet("/mapJSONBlazing", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1()
     {
         Mashtab = pr.Mashtab,
-        Scale = pr.Scale,
+        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -158,8 +163,11 @@ app.MapGet("/mapJSONBlazing", (double x = 0, double y = 0) =>
     return Init.ls.BuildBlazing(allocator, pr1, rect1)
         .ToArray()
         .Take(5);
-
 });
+    //.WithTags("Map")
+    //.WithSummary("Blazing Получение преобразованных геоданных")
+    //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+    //.Produces<ILayer[]>(StatusCodes.Status200OK);
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -176,35 +184,51 @@ app.MapGet("/naturalsort", () =>
 
     return result;
 });
-//.WithTags("String")
-//.WithSummary("Натуральное сравнение 10000 пар строк")
-//.WithDescription("Фукнция используется в натуральной сортировке");
+    //.WithTags("String")
+    //.WithSummary("Натуральное сравнение 10000 пар строк")
+    //.WithDescription("Фукнция используется в натуральной сортировке");
 
 
 app.MapGet("/naturalsortblazing", () =>
-{    
+{
     var result = 0;
+    //for (var i = 0U; i < 10000U; i++)
+    //{
+    //    var s1 = new MimAllocString((uint)STR1.Length + 20U);
+    //    s1.Add(STR1);
+    //    s1.Add(i);
+
+
+    //    var s2 = new MimAllocString((uint)STR1.Length + 20U);
+    //    s1.Add(STR2);
+    //    s1.Add(i);
+
+    //    result += Strings.CompareUnsafe(s1, s2);
+
+    //    s1.Dispose();
+    //    s2.Dispose();
+
+    //}
+
+    using var allocator = ArenaAllocator<char>.Get();
     for (var i = 0U; i < 10000U; i++)
     {
-        var s1 = new MimAllocString((uint)STR1.Length + 20U);
-        s1.Add(STR1);
-        s1.Add(i);
+        var s1 = new BufferString(allocator, STR1.Length + 20);
+        s1.Append(STR1);
+        s1.Append(i);
 
+        var s2 = new BufferString(allocator, STR2.Length + 20);
+        s2.Append(STR2);
+        s2.Append(i);
 
-        var s2 = new MimAllocString((uint)STR1.Length + 20U);
-        s1.Add(STR2);
-        s1.Add(i);
-
-        result += Strings.CompareUnsafe(s1, s2);
-
-        s1.Dispose();
-        s2.Dispose();
-
+        result += Strings.CompareUnsafe(ref s1, ref s2);
     }
 
     return result;
 });
-
+    //.WithTags("String")
+    //.WithSummary("Blazing Натуральное сравнение 10000 строк")
+    //.WithDescription("Фукнция используется в натуральной сортировке");
 
 app.MapGet("/naturalsortHack", () =>
 {
@@ -227,9 +251,9 @@ app.MapGet("/naturalsortHack", () =>
 
     return result;
 });
-//.WithTags("String")
-//.WithSummary("Натуральное сравнение 10000 строк")
-//.WithDescription("Фукнция используется в натуральной сортировке");
+    //.WithTags("String")
+    //.WithSummary("Хакерское Натуральное сравнение 10000 строк")
+    //.WithDescription("Фукнция используется в натуральной сортировке");
 
 
 //app.UseSwagger();

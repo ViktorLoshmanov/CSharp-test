@@ -90,83 +90,26 @@ internal static class Drawer
     /// <param name="ls">Слои</param>
     /// <param name="pr">Свойства отрисовки</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>    
-    //public static ILayer[] Build(ILegend[] ls, ref DrawProperties1 pr, ref Rect rect)
-    //public static System.Collections.Generic.List<ILayer> Build(ILegend[] ls, DrawProperties1 pr, Rect rect)
-    //{
-    //    var result = new System.Collections.Generic.List<ILayer>(ls.Length);
-    //    var distance = 1 / pr.Scale;
-
-    //    foreach (var l in ls)
-    //    {
-    //        if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
-
-    //        var mas = new System.Collections.Generic.List<IObraz>(l.Primitives.Length + 1000);
-
-    //        foreach (var obraz in ClipPrimitives(l, rect))
-    //        {
-    //            //var gg = obraz;
-    //            //gg.Coords = obraz.Coords
-    //            //       .Optimize(distance)
-    //            //       .Translate(pr);
-
-    //            //mas.Add(gg);
-    //            mas.Add(new IObrazResult
-    //            {
-    //                Name = obraz.Name,
-    //                Coords = obraz.Coords
-    //                   .Optimize(distance)
-    //                   .Translate(pr)
-    //            });
-
-    //        }
-
-    //        //result.Add(new() { LegendId = l.Id, Obrazes = [.. mas] });
-    //        result.Add(new() { LegendId = l.Id, Obrazes = mas });
-    //    }
-
-    //    //return [.. result];
-    //    return result;
-
-    //}
-
-    /// <summary>
-    /// Подготовка данных для отрисовки
-    /// </summary>
-    /// <param name="ls">Слои</param>
-    /// <param name="pr">Свойства отрисовки</param>
-    /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
-
     public static IEnumerable<ILayerResult> BuildGenerator(ILegend[] ls, DrawProperties1 pr, Rect rect)
     {
-        var distance = 1 / pr.Scale;
+        var distance = 1 / pr.Scale[0];
 
         foreach (var l in ls)
         {
             if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
 
-            var mas = new System.Collections.Generic.List<IObrazResult>(l.Primitives.Length + 1000);
+            var mas = new List<IObrazResult>(l.Primitives.Length + 1000);
 
 
-            foreach (var obraz in ClipPrimitives(l, rect))
-            {
-                //var gg = obraz;
-                //gg.Coords = obraz.Coords
-                //       .Optimize(distance)
-                //       .Translate(pr);
-
-                //mas.Add(gg);
-
+            foreach (var obraz in ClipPrimitives(l, rect))            
                 mas.Add(new IObrazResult
                 {
                     Name = obraz.Name,
                     Coords = obraz.Coords
                         .Optimize(distance)
-                        .Translate(pr)
+                        .Translate(ref pr)
                 });
-
-            }
 
             yield return new() { LegendId = l.Id, Obrazes = mas };
         }
@@ -183,13 +126,13 @@ internal static class Drawer
 
     public static IEnumerable<ILayerResult> BuildBlazing(this ILegend[] ls, ArenaAllocator<double> allocator, DrawProperties1 pr, Rect rect)
     {
-        var distance = 1 / pr.Scale;
+        var distance = 1 / pr.Scale[0];
 
         foreach (var l in ls)
         {
             if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
 
-            var mas = new System.Collections.Generic.List<IObrazResult>(l.Primitives.Length);
+            var mas = new List<IObrazResult>(l.Primitives.Length);
 
             foreach (var obraz in l.ClipPrimitivesBlazing(allocator, rect))
                 mas.Add(new IObrazResult
@@ -197,7 +140,7 @@ internal static class Drawer
                     Name = obraz.Name,
                     Coords = obraz.Coords
                         .Optimize(allocator, distance)
-                        .Translate(pr)
+                        .Translate(ref pr)
                 });
 
 

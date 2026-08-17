@@ -1,7 +1,6 @@
 ﻿//using BenchmarkDotNet.Disassemblers;
 using apiTest.Arena;
 using drawer.Models;
-using System.Buffers;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -13,48 +12,36 @@ namespace drawer;
 
 public static class ListAdapter<T>
 {
-    private static readonly FieldInfo _arrayField = typeof(System.Collections.Generic.List<T>)
+    private static readonly FieldInfo _arrayField = typeof(List<T>)
         .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
         .Single(x => x.FieldType == typeof(T[]));
 
-    public static Memory<T> ToMemory(System.Collections.Generic.List<T> list)
+    public static Memory<T> ToMemory(List<T> list)
     {
         T[] array = (T[])_arrayField.GetValue(list);
         return array.AsMemory(0, list.Count);
-
-        //return Memory<T>.Create(array, 0, list.Count);
     }
 }
 
 internal static class Calc
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Memory<double> Translate(this Memory<double> mas, DrawProperties1 pr)
+    public static Memory<double> Translate(this Memory<double> mas,ref DrawProperties1 pr)
     {
+        
         var count = mas.Length - mas.Length % 4;
         var scale = pr.Scale;
-        //var scaleVector = new Vector<double>([scale, -scale, scale, -scale]);
         var cs = mas.Span;
 
-        for (var i = 0; i < count; i += 4)
-        {
-            var chank = cs[i..(i + 4)];
-            //var v = new Vector<double>(chank);
-            //var result = (v - pr.LeftTop) * scaleVector;
-            //result.CopyTo(chank);
-
-            var v = new Vector<double>(chank);
-            var result = (v - pr.LeftTop) * scale;
-            cs[i] = result[0];
-            cs[i + 1] = -result[1];
-            cs[i + 2] = result[2];
-            cs[i + 3] = -result[3];
-        }
+        var vecArray = MemoryMarshal.Cast<double, Vector<double>>(cs[..count]);
+        for (var i = 0; i < vecArray.Length; i++)
+        
+            vecArray[i] = (vecArray[i] - pr.LeftTop) * scale;
 
         if (count >= mas.Length) return mas;
 
-        cs[^2] = (cs[^2] - pr.LeftTop[0]) * scale;
-        cs[^1] = (pr.LeftTop[1] - cs[^1]) * scale;
+        cs[^2] = (cs[^2] - pr.LeftTop[0]) * scale[0];
+        cs[^1] = (pr.LeftTop[1] - cs[^1]) * scale[0];
 
         return mas;
     }
@@ -65,7 +52,7 @@ internal static class Calc
         var count = mas.Length;
         if (count < 5) return mas;
 
-        var coords = new System.Collections.Generic.List<double>(mas.Length);
+        var coords = new List<double>(mas.Length);
 
         var sp = mas.AsSpan();
 

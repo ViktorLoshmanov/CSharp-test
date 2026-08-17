@@ -21,7 +21,7 @@ public struct DrawProperties1
 {
     public Vector<double> LeftTop { get; set; }
     /** Коэффициент масштабирования */
-    public double Scale { get; set; }
+    public Vector<double> Scale { get; set; }
     /** Картографический масштаб, например 1:500 mashtab = 500 */
     public double Mashtab { get; set; }
 }

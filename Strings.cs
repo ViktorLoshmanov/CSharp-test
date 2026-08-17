@@ -1,4 +1,5 @@
-﻿using LinkDotNet.StringBuilder;
+﻿using apiTest.Arena;
+using LinkDotNet.StringBuilder;
 using mimalloc;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -63,7 +64,7 @@ public class Strings
             return CompareUnsafe(pointer1, pointer2);
     }
 
-    public unsafe static int CompareUnsafe(Arena.List<char> s1, Arena.List<char> s2)
+    public unsafe static int CompareUnsafe(ref BufferString s1, ref BufferString s2)
     {
         var (ne1, ne2) = (s1.Count == 0, s2.Count == 0);
 
