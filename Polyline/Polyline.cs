@@ -199,7 +199,7 @@ public static class Polyline
 
 
     /** Отсечение полилинии по прямоугольнику */
-    public static List<double[]> ClipPolyline(IPrimitive g, Rect rect)
+    public static List<double[]> ClipPolyline(Primitive g, Rect rect)
     {
         var res = (g.Rect.Left < rect.Left)
             ? ClipLeft(g.Coords, rect.Left)
@@ -232,4 +232,3 @@ public static class Polyline
         return res;
     }
 }
-

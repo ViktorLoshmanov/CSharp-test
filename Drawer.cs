@@ -1,6 +1,7 @@
 ﻿using apiTest.Arena;
 using drawer.Models;
 using System.Buffers;
+using System.Reflection;
 using System.Text;
 
 namespace drawer;
@@ -13,25 +14,25 @@ internal static class Drawer
     /// <param name="l">Слой</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Коллекция отсеченных графических образов</returns>
-    private static IEnumerable<IObraz> ClipPrimitives(ILegend l, Rect rect)
+    private static void ClipPrimitives(Legend l, ref Rect rect, Action<Obraz> visit)
     {
         foreach (var g in l.Primitives)
             if (g.Rect.Left >= rect.Left && g.Rect.Bottom >= rect.Bottom && g.Rect.Right <= rect.Right && g.Rect.Top <= rect.Top)
                 // Целиком лежит внутри прямоугольника
-                yield return new IObraz { Coords = [.. g.Coords], Name = g.Name };
+                visit(new Obraz { Coords = [.. g.Coords], Name = g.Name });
             else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
                 // Необходимо отсекать
                 switch (l.Type)
                 {
                     case GrTypeEnum.Line:
                         foreach (var cs in Polyline.ClipPolyline(g, rect))
-                            yield return new IObraz { Coords = cs, Name = g.Name };
+                            visit(new Obraz { Coords = cs, Name = g.Name });
                         break;
                     case GrTypeEnum.Polygon:
                         {
                             var cs = Polygon.ClipPolygon(g, rect);
                             if (cs.Length > 0)
-                                yield return new IObraz { Coords = cs, Name = g.Name };
+                                visit(new Obraz { Coords = cs, Name = g.Name });
                         }
                         break;
                 }
@@ -39,112 +40,155 @@ internal static class Drawer
     }
 
     /// <summary>
-    /// Отсечение графических образов по прямоугольнику
+    /// Подготовка данных для отрисовки
     /// </summary>
-    /// <param name="l">Слой</param>
+    /// <param name="ls">Слои</param>
+    /// <param name="pr">Свойства отрисовки</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Коллекция отсеченных графических образов</returns>
-    private static IEnumerable<IObrazResult> ClipPrimitivesBlazing(this ILegend l, ArenaAllocator<double> allocator, Rect rect)
+    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
+    public static IEnumerable<LayerResult> BuildGenerator(Legend[] ls, DrawProperties1 pr, Rect rect)
     {
-        foreach (var g in l.Primitives)
-            if (g.Rect.Left >= rect.Left && g.Rect.Bottom >= rect.Bottom && g.Rect.Right <= rect.Right && g.Rect.Top <= rect.Top)
-            // Целиком лежит внутри прямоугольника
-            {
-                var coods = allocator.Alloc(g.Coords.Length);
-                g.Coords.CopyTo(coods);
+        var distance = 1 / pr.Scale[0];
 
-                yield return new IObrazResult { Coords = coods, Name = g.Name };
-            }
-            else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
-                // Необходимо отсекать
-                switch (l.Type)
+        foreach (var l in ls)
+        {
+            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
+
+            var mas = new List<ObrazResult>(l.Primitives.Length);
+                        
+            ClipPrimitives(l, ref rect, obraz =>
+                mas.Add(new ObrazResult
                 {
-                    case GrTypeEnum.Line:
-                        foreach (var cs in Polyline.ClipPolyline(g, rect))
-                        {
-                            var coods = allocator.Alloc(cs.Length);
-                            cs.CopyTo(coods);
+                    Name = obraz.Name,
+                    Coords = obraz.Coords
+                       .Optimize(distance)
+                       .Translate(ref pr)
+                })
+            );
 
-                            yield return new IObrazResult { Coords = coods, Name = g.Name };
-                        }
-                        break;
-                    case GrTypeEnum.Polygon:
-                        {
-                            var cs = Polygon.ClipPolygon(g, rect);
-                            if (cs.Length > 0)
+            yield return new() { LegendId = l.Id, Obrazes = mas };
+        }
+    }
+
+
+    /// <summary>
+    /// Подготовка данных для отрисовки
+    /// </summary>
+    /// <param name="ls">Слои</param>
+    /// <param name="pr">Свойства отрисовки</param>
+    /// <param name="rect">Прямоугольник для отсечения</param>
+    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
+
+    public static Memory<LayerResultBlazing> BuildBlazing(this Legend[] ls,
+        ArenaAllocator<double> allocator,
+        ArenaAllocator<ObrazResultBlazing> allocatorObrazes,
+        ArenaAllocator<LayerResultBlazing> allocatorResult,
+        ref DrawProperties1 pr,
+        ref Rect rect)
+    {
+        var distance = 1 / pr.Scale[0];
+
+        var reuslt = allocatorResult.Alloc(ls.Length);
+
+        var sp = reuslt.Span;
+        var count = 0;
+
+        for (int i = 0; i < ls.Length; i++)
+        {
+            var l = ls[i];
+
+            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
+
+            var mas = allocatorObrazes.Alloc(l.Primitives.Length);
+            var gSp = mas.Span;
+
+            var index = 0;
+
+            for (int j = 0; j < l.Primitives.Length; j++)
+            {
+                var g = l.Primitives[j];
+                if (g.Rect.Left >= rect.Left && g.Rect.Bottom >= rect.Bottom && g.Rect.Right <= rect.Right && g.Rect.Top <= rect.Top)
+                // Целиком лежит внутри прямоугольника
+                {
+                    var coods = allocator.Alloc(g.Coords.Length);
+                    g.Coords.CopyTo(coods);
+
+                    if (index > mas.Length)
+                    {
+                        var mas1 = allocatorObrazes.Alloc(count + 256);
+                        mas.CopyTo(mas1);
+                        mas = mas1;
+                        gSp = mas.Span;
+                    }
+
+                    gSp[index++] = new ObrazResultBlazing
+                    {
+                        Name = g.Name,
+                        Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                    };
+                }
+                else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
+                    // Необходимо отсекать
+                    switch (l.Type)
+                    {
+                        case GrTypeEnum.Line:
+                            foreach (var cs in Polyline.ClipPolyline(g, rect))
                             {
                                 var coods = allocator.Alloc(cs.Length);
                                 cs.CopyTo(coods);
 
-                                yield return new IObrazResult { Coords = coods, Name = g.Name };
+                                if (index > mas.Length)
+                                {
+                                    var mas1 = allocatorObrazes.Alloc(count + 256);
+                                    mas.CopyTo(mas1);
+                                    mas = mas1;
+                                    gSp = mas.Span;
+                                }
+
+                                gSp[index++] = new ObrazResultBlazing
+                                {
+                                    Name = g.Name,
+                                    Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                                };
+
                             }
-                        }
-                        break;
-                }
+                            break;
+                        case GrTypeEnum.Polygon:
+                            {
+                                var cs = Polygon.ClipPolygon(g, rect);
+                                if (cs.Length > 0)
+                                {
+                                    var coods = allocator.Alloc(cs.Length);
+                                    cs.CopyTo(coods);
 
+                                    if (index > mas.Length)
+                                    {
+                                        var mas1 = allocatorObrazes.Alloc(count + 256);
+                                        mas.CopyTo(mas1);
+                                        mas = mas1;
+                                        gSp = mas.Span;
+                                    }
+
+                                    gSp[index++] = new ObrazResultBlazing
+                                    {
+                                        Name = g.Name,
+                                        Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                                    };
+
+                                }
+                            }
+                            break;
+                    }
+            }
+
+            sp[count++] = new() { LegendId = l.Id, Obrazes = mas[..index] };
+        }
+        return reuslt[..count];
     }
 
-    /// <summary>
-    /// Подготовка данных для отрисовки
-    /// </summary>
-    /// <param name="ls">Слои</param>
-    /// <param name="pr">Свойства отрисовки</param>
-    /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
-    public static IEnumerable<ILayerResult> BuildGenerator(ILegend[] ls, DrawProperties1 pr, Rect rect)
+    public static IEnumerable<LayerResult> AllTakeCount(this IEnumerable<LayerResult> result, int count)
     {
-        var distance = 1 / pr.Scale[0];
-
-        foreach (var l in ls)
-        {
-            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
-
-            var mas = new List<IObrazResult>(l.Primitives.Length + 1000);
-
-
-            foreach (var obraz in ClipPrimitives(l, rect))            
-                mas.Add(new IObrazResult
-                {
-                    Name = obraz.Name,
-                    Coords = obraz.Coords
-                        .Optimize(distance)
-                        .Translate(ref pr)
-                });
-
-            yield return new() { LegendId = l.Id, Obrazes = mas };
-        }
-    }
-
-
-    /// <summary>
-    /// Подготовка данных для отрисовки
-    /// </summary>
-    /// <param name="ls">Слои</param>
-    /// <param name="pr">Свойства отрисовки</param>
-    /// <param name="rect">Прямоугольник для отсечения</param>
-    /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
-
-    public static IEnumerable<ILayerResult> BuildBlazing(this ILegend[] ls, ArenaAllocator<double> allocator, DrawProperties1 pr, Rect rect)
-    {
-        var distance = 1 / pr.Scale[0];
-
-        foreach (var l in ls)
-        {
-            if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
-
-            var mas = new List<IObrazResult>(l.Primitives.Length);
-
-            foreach (var obraz in l.ClipPrimitivesBlazing(allocator, rect))
-                mas.Add(new IObrazResult
-                {
-                    Name = obraz.Name,
-                    Coords = obraz.Coords
-                        .Optimize(allocator, distance)
-                        .Translate(ref pr)
-                });
-
-
-            yield return new() { LegendId = l.Id, Obrazes = mas };
-        }
+        foreach (var item in result)
+            if (--count >= 0) yield return item;
     }
 }

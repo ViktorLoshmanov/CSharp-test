@@ -1,7 +1,7 @@
 ﻿namespace drawer.Models;
 
 /** Приметив графического образа */
-public class IPrimitive
+public class Primitive
 {
     /** Координаты примитива  */
     public double[] Coords { get; set; } = null!;

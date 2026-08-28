@@ -1,4 +1,6 @@
 ﻿using apiTest;
+using apiTest.Arena;
+
 //using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Numerics;
 using System.Text;
@@ -15,10 +17,14 @@ public struct DrawProperties
     public double Scale { get; set; }
     /** Картографический масштаб, например 1:500 mashtab = 500 */
     public double Mashtab { get; set; }
+
+    /** Левый верхний угол */
+    public Vector<double> LeftTop { get; set; }
 }
 
 public struct DrawProperties1
 {
+    /** Левый верхний угол */
     public Vector<double> LeftTop { get; set; }
     /** Коэффициент масштабирования */
     public Vector<double> Scale { get; set; }
@@ -27,52 +33,74 @@ public struct DrawProperties1
 }
 
 /** Результирующий слой для отображения */
-//[JsonConverter(typeof(LayerConverter))]
-public struct ILayer
+public struct Layer
 {
     /** Уникальный идентификатор */
     public Int64 LegendId { get; set; }
     /** Координаты для отрисовки */
-    public IList<IObraz> Obrazes { get; set; } = null!;
+    public IList<Obraz> Obrazes { get; set; } = null!;
 
-    public ILayer()
+    public Layer()
     {
 
     }
 }
 
-public struct ILayerResult
+public struct LayerResult
 {
     /** Уникальный идентификатор */
     public Int64 LegendId { get; set; }
     /** Координаты для отрисовки */
-    public IList<IObrazResult> Obrazes { get; set; } = null!;
+    public IList<ObrazResult> Obrazes { get; set; } = null!;
 
-    public ILayerResult()
+    public LayerResult()
+    {
+
+    }
+}
+
+public struct LayerResultBlazing
+{
+    /** Уникальный идентификатор */
+    public Int64 LegendId { get; set; }
+    /** Координаты для отрисовки */
+    public Memory<ObrazResultBlazing> Obrazes { get; set; } = null!;
+
+    public LayerResultBlazing()
     {
 
     }
 }
 
 /** Данные для отображения */
-public struct IObraz
+public struct Obraz
 {
     /** Имя графического образа */
     public string Name { get; set; } = null!;
 
     /** Координаты графического образа */
     public double[] Coords { get; set; } = null!;
-    public IObraz() { }
+    public Obraz() { }
 }
 
 /** Данные для отображения */
-public struct IObrazResult
+public struct ObrazResult
 {
     /** Имя графического образа */
     public string Name { get; set; }
 
-    /** Координаты графического образа */
+    /** Координаты графического образа */    
     public Memory<double> Coords { get; set; }
 }
 
+/** Данные для отображения */
+[JsonConverter(typeof(ObrazResultBlazingConverter))]
+public struct ObrazResultBlazing
+{
+    /** Имя графического образа */
+    public string Name { get; set; }
 
+    // Добавляем быстрое преобразования double в строку
+    /** Координаты графического образа */
+    public Memory<double> Coords { get; set; }
+}

@@ -138,7 +138,7 @@ public enum FontStyleEnum
 }
 
 /** Графические свойства условного обозначения */
-public class ILegendBlock
+public class LegendBlock
 {
     public Int64 Id { get; set; }
     public double Size { get; set; }
@@ -146,7 +146,7 @@ public class ILegendBlock
 }
 
 /** Легенда для заливки */
-public class ILegendFill
+public class LegendFill
 {
     /** Цвет заливки 1 */
     public string Color1 { get; set; } = null!;
@@ -159,11 +159,11 @@ public class ILegendFill
     // fillHatchStyle:
     /** Стиль Градиентной заливки */
     public GradientStyle GradientStyle { get; set; }
-    public ILegendBlock Block { get; set; } = null!;
+    public LegendBlock Block { get; set; } = null!;
 }
 
 /** Графические свойства границы */
-public class ILegendBorder
+public class LegendBorder
 {
     /** цвет */
     public string Color { get; set; } = null!;
@@ -180,7 +180,7 @@ public class ILegendBorder
 }
 
 /** Графические свойства шрифта */
-public class ILegendFont
+public class LegendFont
 {
     public string Family { get; set; } = null!;
     public double Size { get; set; }
@@ -189,10 +189,10 @@ public class ILegendFont
 }
 
 /** Графические свойства надписи */
-public class ILegendText
+public class LegendText
 {
     /** Диапазон видимости */
-    public IMashtabRange MashtabRange { get; set; }
+    public MashtabRange MashtabRange { get; set; }
     /** Опорный масштаб */
     public double MashtabBase { get; set; }
     /** Масштабируемость */
@@ -204,29 +204,29 @@ public class ILegendText
     /** Цвет фона */
     public string BackColor { get; set; } = null!;
     /** Шрифт */
-    public ILegendFont Font { get; set; } = null!;
+    public LegendFont Font { get; set; } = null!;
     public bool IsAnalyze { get; set; }
 }
 
 /** Графические свойства */
-public class ILegend
+public class Legend
 {
     /** Уникальный идентификатор */
     public Int64 Id { get; set; }
     /** Тип графического образа */
     public GrTypeEnum Type { get; set; }
     /** Диапазон видимости */
-    public IMashtabRange MashtabRange { get; set; }
+    public MashtabRange MashtabRange { get; set; }
     /** Приоритет */
     public int Priority { get; set; }
     /** Условное обозначение */
-    public ILegendBlock Block { get; set; } = null!;
+    public LegendBlock Block { get; set; } = null!;
     /** Заливка */
-    public ILegendFill Fill { get; set; } = null!;
+    public LegendFill Fill { get; set; } = null!;
     /** Граница */
-    public ILegendBorder Border { get; set; } = null!;
+    public LegendBorder Border { get; set; } = null!;
     /** Надпись */
-    public ILegendText Text { get; set; } = null!;
+    public LegendText Text { get; set; } = null!;
     /** Графические примитивы */
-    public IPrimitive[] Primitives { get; set; } = null!;
+    public Primitive[] Primitives { get; set; } = null!;
 }

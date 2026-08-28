@@ -1,22 +1,18 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.Extensions.ObjectPool;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace apiTest.Arena;
 
-public partial class ArenaAllocator<T> : IDisposable
+public partial class ArenaAllocator<T>() : IDisposable
 {
-    private static int defaultPoolSize = 1 << 18;
     private static readonly ConcurrentBag<ArenaAllocator<T>> pools = [];
 
-    private T[] _buffer = GC.AllocateUninitializedArray<T>(DefaultPoolSize);
-
-    private Queue<T[]> _availablе = new();
-    private Queue<T[]> _used = new();
+    private T[] _buffer = GC.AllocateUninitializedArray<T>(256);
 
     private int _count = 0;
 
-    public static int DefaultPoolSize { get => defaultPoolSize; set => defaultPoolSize = value; }
-
+    /** Получение Аллокатора с предполагаемой размерностью */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ArenaAllocator<T> Get()
     {
@@ -27,33 +23,38 @@ public partial class ArenaAllocator<T> : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<T> Alloc(int length)
     {
-        if (_count + length > _buffer.Length)
-        {
-            _used.Enqueue(_buffer);
-            _count = 0;
-
-            if (_availablе.TryDequeue(out var buffer))
-                _buffer = buffer;
-            else
-                _buffer = GC.AllocateUninitializedArray<T>(DefaultPoolSize);
-        }
+        var newCount = _count + length;
+        if (newCount > _buffer.Length)
+            _buffer = GC.AllocateUninitializedArray<T>(GrowCap(_buffer.Length, newCount));
 
         var start = _count;
-        _count += length;
+        _count = newCount;
 
-        return _buffer.AsMemory(start, length);
+        return new Memory<T>(_buffer, start, length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GrowCap(int oldCap, int need)
+    {
+        const int minGrow = 256;
+
+        var newCap = Math.Max(oldCap, minGrow);
+
+        while (newCap < need) newCap *= 2;
+        return newCap;
     }
 
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose()
     {
         _count = 0;
 
-        while (_used.TryDequeue(out var result)) _availablе.Enqueue(result);
+        //while (_used.TryDequeue(out var result)) _availablе.Enqueue(result);
         pools.Add(this);
+
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Clear() { _count = 0; }
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //public void Clear() { _count = 0; }
 }

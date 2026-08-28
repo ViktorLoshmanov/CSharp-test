@@ -1,4 +1,4 @@
-﻿using mimalloc;
+﻿//using mimalloc;
 using System.Runtime.CompilerServices;
 
 namespace apiTest.Arena;
@@ -6,8 +6,6 @@ namespace apiTest.Arena;
 /** Динамическая строка */
 public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
 {
-    private static readonly char[] _singleDigitCharCache = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
     private Memory<char> Items { get; set; } = allocator.Alloc(copacity);
     private readonly ArenaAllocator<char> Allocator = allocator;
     public int Count { get; set; }
@@ -35,7 +33,7 @@ public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
     public void Append(char item)
     {
         var count = Count + 1;
-        ReAlloc(count);            
+        EnsureCapacity(count);
 
         Items.Span[count] = item;
 
@@ -44,70 +42,26 @@ public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Append(uint number)
+    public void Append<T>(T value, scoped ReadOnlySpan<char> format = default, int bufferSize = 36, IFormatProvider? formatProvider = null) where T : ISpanFormattable
     {
-        var numberLength = CountDigits(number);
+        var sp = Items.Span[Count..];
 
-        Count += numberLength;
+        if (!value.TryFormat(sp, out var charsWritten, format, formatProvider))
+            throw new InvalidOperationException($"Не удалось вставить {value} в указанный буфер. Буфер размера: {bufferSize}) не достаточно");
 
-        ReAlloc(Count);
-
-        var sp = AsSpan();
-
-        if (numberLength == 1)
-            sp[^1] = _singleDigitCharCache[number];
-        else
-            UInt32ToDecChars(sp, number);
-
-        Items.Span[Count] = '\0';
+        Count += charsWritten;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void UInt32ToDecChars(Span<char> sp, uint value)
-    {
-        var count = sp.Length;
-
-        do
-        {
-            var quotient = value / 10;
-            (value, var remainder) = (quotient, value % 10);
-
-            sp[--count] = (char)(remainder + '0');
-        }
-        while (value != 0);
-    }
-
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CountDigits(uint value)
-    {
-        var digits = 1;
-        while (value >= 100_000)
-        {
-            value /= 100_000;
-            digits += 5;
-        }
-
-        return value switch
-        {
-            < 10 => digits,
-            < 100 => digits + 1,
-            < 1000 => digits + 2,
-            < 10_000 => digits + 3,
-            _ => digits + 4
-        };
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ReAlloc(int copacity)
+    private void EnsureCapacity(int copacity)
     {
         if (copacity <= Items.Length) return;
 
         var newBuffer = Allocator.Alloc(copacity * 2 + 2);
 
         AsSpan().CopyTo(newBuffer.Span[..Count]);
-                
-        Items = newBuffer;        
+
+        Items = newBuffer;
     }
 
     public override string ToString()
@@ -115,13 +69,3 @@ public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
         return AsSpan().ToString();
     }
 }
-
-
-
-//public partial class ArenaAllocator<T>
-//{
-//    public BufferString AllocString(int copacity)
-//    {
-//        new(Alloc(copacity) as Memory<char>);
-
-//}

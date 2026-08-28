@@ -2,31 +2,26 @@
 
 namespace apiTest.Arena;
 
-public struct ArenaList<T>
+public struct ArenaList<T>(Memory<T> items, ArenaAllocator<T> arena)
 {
-    private Memory<T> _items { get; set; }
+    //private Memory<T> Items { get; set; } = items;
     public int Count { get; set; }
+    //private ArenaAllocator<T> Arena { get; set; } = arena;
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Span<T> AsSpan() => _items.Span[..Count];
-
-    public ArenaList(Memory<T> items)
-    {
-        _items = items;
-    }
+    public readonly Span<T> AsSpan() => items.Span[..Count];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(ReadOnlySpan<T> item)
     {
         var count = Count + item.Length;
-        //if (count > items.Length)
-        //    //items = ArenaAllocator<T>.Alloc(count);
-        //    throw new Exception("Выход за отведённые размеры");
+        if (count <= items.Length)
+            items = arena.Alloc(count + 256);
 
-        item.CopyTo(_items.Span[Count..]);
-        //items.Span[Count] = '\0';
 
+        item.CopyTo(items.Span[Count..]);
+        
         Count = count;
     }
 
@@ -34,11 +29,10 @@ public struct ArenaList<T>
     public void Append(T item)
     {
         var count = Count + 1;
-        //if (count > items.Length)
-        //    //items = ArenaAllocator<T>.Alloc(count);
-        //    throw new Exception("Выход за отведённые размеры");
+        if (count > items.Length)
+            items = arena.Alloc(count + 256);
 
-        _items.Span[count] = item;
+        items.Span[Count] = item;
 
         Count = count;
     }
@@ -46,6 +40,6 @@ public struct ArenaList<T>
 
 public partial class ArenaAllocator<T>
 {
-    public ArenaList<T> AllocList(int copacity) => new(Alloc(copacity));
+    public ArenaList<T> AllocList(int copacity) => new(Alloc(copacity), this);
 
 }

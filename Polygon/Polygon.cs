@@ -54,7 +54,7 @@ internal static class Polygon
                 pl.Add((left - px1) * (py2 - py1) / (px2 - px1) + py1);
             }
             (px1, py1) = (px2, py2);
-             
+
         }
 
         return [.. pl];
@@ -174,7 +174,7 @@ internal static class Polygon
             {
                 pl.Add(px2);
                 pl.Add(py2);
-            }            
+            }
             else if (py1 > top && py2 < top)
             {
                 pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
@@ -196,7 +196,7 @@ internal static class Polygon
     }
 
     /** Отсечение полигона по прямоугольнику */
-    public static double[] ClipPolygon(IPrimitive g, Rect rect)
+    public static double[] ClipPolygon(Primitive g, Rect rect)
     {
         var res = (g.Rect.Left < rect.Left)
             ? ClipLeft(g.Coords, rect.Left)
@@ -214,4 +214,3 @@ internal static class Polygon
         return res;
     }
 }
-
