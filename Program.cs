@@ -4,7 +4,9 @@ using drawer;
 using drawer.Models;
 //using LinkDotNet.StringBuilder;
 using System.Numerics;
-using System.Text.Encodings.Web;
+using System.Runtime.Intrinsics;
+//using System.Text.Encodings.Web;
+
 
 Init.tt();
 
@@ -28,7 +30,7 @@ builder.WebHost.ConfigureKestrel(options =>
 //});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
-{   
+{
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, ResultsTypeJsonContext.Default);
 
     //options.SerializerOptions.DefaultBufferSize = 1024 * 1024;
@@ -78,7 +80,8 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
-        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+        Scale = pr.Scale,
+        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -109,7 +112,8 @@ app.MapGet("/mapBlazing", (ArenasService arenas, HttpContext context, double x =
     var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
-        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+        Scale= pr.Scale,
+        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         //LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
         LeftTop = pr.LeftTop + vadd
     };
@@ -144,7 +148,8 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
     var pr1 = new DrawProperties1()
     {
         Mashtab = pr.Mashtab,
-        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+        Scale = 1 / pr.Scale,
+        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -169,11 +174,11 @@ app.MapGet("/mapJSONBlazing", (ArenasService arenas, HttpContext context, double
     x /= 100;
     y /= 100;
 
-
     var pr1 = new DrawProperties1()
     {
         Mashtab = pr.Mashtab,
-        Scale = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+        Scale = pr.Scale,
+        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
         LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
     };
 
@@ -201,19 +206,20 @@ const string STR2 = "asrgfsadf12321";
 
 app.MapGet("/naturalsort", () =>
 {
+    var sp1 = STR1.AsSpan();
+    var sp2 = STR2.AsSpan();
     var result = 0;
     for (var i = 0; i < 10000; i++)
     {
-        //result += Strings.CompareUnsafe(STR1 + i, STR2 + i);
-        result += Strings.CompareSafe(STR1 + i, STR2 + i);
-        //result += Strings.CompareIterator(STR1 + i, STR2 + i);
+        //result += Strings.CompareUnsafe($"{STR1}{i}", $"{STR2}{i}");
+        result += Strings.CompareSafe($"{sp1}{i}", $"{sp2}{i}");
     }
 
     return result;
 });
 //.WithTags("String")
 //.WithSummary("Натуральное сравнение 10000 пар строк")
-//.WithDescription("Фукнция используется в натуральной сортировке");
+//.WithDescription("Функция используется в натуральной сортировке, цель теста выделить все 10000 пар строк в памяти и сравнить их, из-за лени выделение 10000 пар строк происходит в том же цикле где и сравнение");
 
 
 app.MapGet("/naturalsortblazing", () =>
@@ -236,17 +242,19 @@ app.MapGet("/naturalsortblazing", () =>
     //    s2.Dispose();
 
     //}
+    var sp1 = STR1.AsSpan();
+    var sp2 = STR2.AsSpan();
 
     using var allocator = ArenaAllocator<char>.Get();
 
     for (var i = 0U; i < 10000U; i++)
     {
         var s1 = new BufferString(allocator, STR1.Length + 5);
-        s1.Append(STR1);
+        s1.Append(sp1);
         s1.Append(i);
 
         var s2 = new BufferString(allocator, STR2.Length + 5);
-        s2.Append(STR2);
+        s2.Append(sp2);
         s2.Append(i);
 
         result += Strings.CompareUnsafe(ref s1, ref s2);
@@ -256,7 +264,7 @@ app.MapGet("/naturalsortblazing", () =>
 });
 //.WithTags("String")
 //.WithSummary("Blazing Натуральное сравнение 10000 строк")
-//.WithDescription("Фукнция используется в натуральной сортировке");
+//.WithDescription("Функция используется в натуральной сортировке, цель теста выделить все 10000 пар строк в памяти и сравнить их, из-за лени выделение 10000 пар строк происходит в том же цикле где и сравнение");
 
 
 static unsafe int NaturalSortHack()

@@ -3,6 +3,7 @@ using apiTest.Arena;
 
 //using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Numerics;
+using System.Runtime.Intrinsics;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -27,7 +28,9 @@ public struct DrawProperties1
     /** Левый верхний угол */
     public Vector<double> LeftTop { get; set; }
     /** Коэффициент масштабирования */
-    public Vector<double> Scale { get; set; }
+    public Vector<double> ScaleVector { get; set; }
+    /** Коэффициент масштабирования */
+    public double Scale { get; set; }
     /** Картографический масштаб, например 1:500 mashtab = 500 */
     public double Mashtab { get; set; }
 }

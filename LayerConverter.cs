@@ -1,5 +1,7 @@
 ﻿using apiTest.Arena;
 using drawer.Models;
+using RyuDotNet;
+
 //using RyuCsharp;
 using System.Text;
 using System.Text.Json;
@@ -39,10 +41,15 @@ public class ObrazResultBlazingConverter : JsonConverter<ObrazResultBlazing>
         writer.WriteString(PropName_name, value.Name);
         writer.WritePropertyName(PropName_coords);
 
+        writer.WriteStartArray();
+
         Span<char> charSpan = stackalloc char[128];
         var sp = value.Coords.Span;
         for (var i = 0; i < sp.Length; i++)
-            writer.WriteRawValue(RyuDotNet.Ryu.WriteTo(sp[i], charSpan), true);
+            //writer.WriteNumberValue(sp[i]);
+            writer.WriteRawValue(Ryu.WriteTo(sp[i], charSpan), true);
+
+        writer.WriteEndArray();
 
         writer.WriteEndObject();
     }

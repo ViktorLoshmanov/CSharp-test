@@ -2,6 +2,8 @@
 using drawer.Models;
 using System.Buffers;
 using System.Reflection;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 
 namespace drawer;
@@ -17,10 +19,12 @@ internal static class Drawer
     private static void ClipPrimitives(Legend l, ref Rect rect, Action<Obraz> visit)
     {
         foreach (var g in l.Primitives)
-            if (g.Rect.Left >= rect.Left && g.Rect.Bottom >= rect.Bottom && g.Rect.Right <= rect.Right && g.Rect.Top <= rect.Top)
+        {
+            var r = g.Rect;
+            if (r.Left >= rect.Left && r.Bottom >= rect.Bottom && r.Right <= rect.Right && r.Top <= rect.Top)
                 // Целиком лежит внутри прямоугольника
                 visit(new Obraz { Coords = [.. g.Coords], Name = g.Name });
-            else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
+            else //if (r.Left < rect.Right && r.Bottom < rect.Top && r.Right > rect.Left && r.Top > rect.Bottom)
                 // Необходимо отсекать
                 switch (l.Type)
                 {
@@ -36,6 +40,7 @@ internal static class Drawer
                         }
                         break;
                 }
+        }
 
     }
 
@@ -48,14 +53,14 @@ internal static class Drawer
     /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
     public static IEnumerable<LayerResult> BuildGenerator(Legend[] ls, DrawProperties1 pr, Rect rect)
     {
-        var distance = 1 / pr.Scale[0];
+        var distance = pr.Scale;
 
         foreach (var l in ls)
         {
             if (l.MashtabRange.Min > pr.Mashtab || l.MashtabRange.Max < pr.Mashtab) continue;
 
             var mas = new List<ObrazResult>(l.Primitives.Length);
-                        
+
             ClipPrimitives(l, ref rect, obraz =>
                 mas.Add(new ObrazResult
                 {
@@ -79,19 +84,21 @@ internal static class Drawer
     /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
 
-    public static Memory<LayerResultBlazing> BuildBlazing(this Legend[] ls,
+    public unsafe static Memory<LayerResultBlazing> BuildBlazing(this Legend[] ls,
         ArenaAllocator<double> allocator,
         ArenaAllocator<ObrazResultBlazing> allocatorObrazes,
         ArenaAllocator<LayerResultBlazing> allocatorResult,
         ref DrawProperties1 pr,
         ref Rect rect)
     {
-        var distance = 1 / pr.Scale[0];
+        var distance = pr.Scale;
 
         var reuslt = allocatorResult.Alloc(ls.Length);
 
         var sp = reuslt.Span;
         var count = 0;
+
+        var (left, top, right, bottom) = (rect.Left, rect.Top, rect.Right, rect.Bottom);
 
         for (int i = 0; i < ls.Length; i++)
         {
@@ -104,78 +111,45 @@ internal static class Drawer
 
             var index = 0;
 
+
             for (int j = 0; j < l.Primitives.Length; j++)
             {
+
                 var g = l.Primitives[j];
-                if (g.Rect.Left >= rect.Left && g.Rect.Bottom >= rect.Bottom && g.Rect.Right <= rect.Right && g.Rect.Top <= rect.Top)
+                var r = g.Rect;
+
+                if (r.Left >= left && r.Bottom >= bottom && r.Right <= right && r.Top <= top)
                 // Целиком лежит внутри прямоугольника
                 {
-                    var coods = allocator.Alloc(g.Coords.Length);
-                    g.Coords.CopyTo(coods);
-
-                    if (index > mas.Length)
-                    {
-                        var mas1 = allocatorObrazes.Alloc(count + 256);
-                        mas.CopyTo(mas1);
-                        mas = mas1;
-                        gSp = mas.Span;
-                    }
-
                     gSp[index++] = new ObrazResultBlazing
                     {
                         Name = g.Name,
-                        Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                        Coords = g.Coords.OptimizeBlazing(allocator, distance).Translate(ref pr)
                     };
                 }
-                else if (g.Rect.Left < rect.Right && g.Rect.Bottom < rect.Top && g.Rect.Right > rect.Left && g.Rect.Top > rect.Bottom)
+                else
                     // Необходимо отсекать
                     switch (l.Type)
                     {
                         case GrTypeEnum.Line:
                             foreach (var cs in Polyline.ClipPolyline(g, rect))
-                            {
-                                var coods = allocator.Alloc(cs.Length);
-                                cs.CopyTo(coods);
-
-                                if (index > mas.Length)
-                                {
-                                    var mas1 = allocatorObrazes.Alloc(count + 256);
-                                    mas.CopyTo(mas1);
-                                    mas = mas1;
-                                    gSp = mas.Span;
-                                }
-
                                 gSp[index++] = new ObrazResultBlazing
                                 {
                                     Name = g.Name,
-                                    Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                                    Coords = cs.OptimizeBlazing(allocator, distance).Translate(ref pr)
                                 };
-
-                            }
                             break;
                         case GrTypeEnum.Polygon:
                             {
                                 var cs = Polygon.ClipPolygon(g, rect);
                                 if (cs.Length > 0)
-                                {
-                                    var coods = allocator.Alloc(cs.Length);
-                                    cs.CopyTo(coods);
-
-                                    if (index > mas.Length)
-                                    {
-                                        var mas1 = allocatorObrazes.Alloc(count + 256);
-                                        mas.CopyTo(mas1);
-                                        mas = mas1;
-                                        gSp = mas.Span;
-                                    }
-
                                     gSp[index++] = new ObrazResultBlazing
                                     {
                                         Name = g.Name,
-                                        Coords = coods.Optimize(allocator, distance).Translate(ref pr)
+                                        Coords = cs.OptimizeBlazing(allocator, distance).Translate(ref pr)
                                     };
 
-                                }
+
                             }
                             break;
                     }
@@ -184,6 +158,7 @@ internal static class Drawer
             sp[count++] = new() { LegendId = l.Id, Obrazes = mas[..index] };
         }
         return reuslt[..count];
+
     }
 
     public static IEnumerable<LayerResult> AllTakeCount(this IEnumerable<LayerResult> result, int count)
