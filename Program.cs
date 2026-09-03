@@ -204,6 +204,8 @@ app.MapGet("/mapJSONBlazing", (ArenasService arenas, HttpContext context, double
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
 
+
+// Функция используется в натуральной сортировке, цель теста выделить все 10000 пар строк в памяти и сравнить их, из-за лени выделение 10000 пар строк происходит в том же цикле где и сравнение (Для тех кто не прочитал ниже)
 app.MapGet("/naturalsort", () =>
 {
     var sp1 = STR1.AsSpan();
@@ -225,23 +227,7 @@ app.MapGet("/naturalsort", () =>
 app.MapGet("/naturalsortblazing", () =>
 {
     var result = 0;
-    //for (var i = 0U; i < 10000U; i++)
-    //{
-    //    var s1 = new MimAllocString((uint)STR1.Length + 20U);
-    //    s1.Add(STR1);
-    //    s1.Add(i);
-
-
-    //    var s2 = new MimAllocString((uint)STR1.Length + 20U);
-    //    s1.Add(STR2);
-    //    s1.Add(i);
-
-    //    result += Strings.CompareUnsafe(s1, s2);
-
-    //    s1.Dispose();
-    //    s2.Dispose();
-
-    //}
+    
     var sp1 = STR1.AsSpan();
     var sp2 = STR2.AsSpan();
     var (l1, l2) = (STR1.Length + 5, STR2.Length + 5);
