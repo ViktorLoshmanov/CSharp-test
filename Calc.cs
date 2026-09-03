@@ -49,7 +49,11 @@ internal static class Calc
     public static Memory<double> Optimize(this double[] mas, double l)
     {
         var count = mas.Length;
-        if (count < 5) return mas;
+
+
+        if (count < 5)
+            return mas;
+        
 
         var coords = GC.AllocateUninitializedArray<double>(mas.Length);
 
@@ -69,13 +73,11 @@ internal static class Calc
                 lastCoord1 = sp.Slice(i - 2, 2);
                 lastCoord2 = sp.Slice(i, 2);
 
-                coords[index++] = lastCoord1[0];
-                coords[index++] = lastCoord1[1];
+                (coords[index++], coords[index++]) = (lastCoord1[0], lastCoord1[1]);
             }
 
-        coords[index++] = sp[^2];
-        coords[index++] = sp[^1];
-
+        (coords[index++], coords[index++]) = (sp[^2], sp[^1]);
+                
         return new Memory<double>(coords, 0, index);
     }
 

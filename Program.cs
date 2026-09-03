@@ -136,7 +136,7 @@ app.MapGet("/mapBlazing", (ArenasService arenas, HttpContext context, double x =
 });
 //.WithTags("Map")
 //.WithSummary("Blazing Получение преобразованных геоданных (тест без реального ответа)")
-//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+//.WithDescription("Выбирает геоданные по области, отсекает примитивы по области, оптимизирует координаты, преобразовывает к экранным")
 //.Produces<int>(StatusCodes.Status200OK);
 
 
@@ -244,20 +244,21 @@ app.MapGet("/naturalsortblazing", () =>
     //}
     var sp1 = STR1.AsSpan();
     var sp2 = STR2.AsSpan();
+    var (l1, l2) = (STR1.Length + 5, STR2.Length + 5);
 
     using var allocator = ArenaAllocator<char>.Get();
 
     for (var i = 0U; i < 10000U; i++)
     {
-        var s1 = new BufferString(allocator, STR1.Length + 5);
-        s1.Append(sp1);
+        var s1 = new BufferString(allocator, l1);
+        s1.Append(in sp1);
         s1.Append(i);
 
-        var s2 = new BufferString(allocator, STR2.Length + 5);
+        var s2 = new BufferString(allocator, l2);
         s2.Append(sp2);
         s2.Append(i);
 
-        result += Strings.CompareUnsafe(ref s1, ref s2);
+        result += Strings.CompareUnsafe(in s1, in s2);
     }
 
     return result;

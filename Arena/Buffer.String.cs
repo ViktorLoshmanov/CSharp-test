@@ -1,50 +1,82 @@
 ﻿//using mimalloc;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace apiTest.Arena;
 
-/** Динамическая строка */
-public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
+/** Упрощённая запись double в строку */
+public class BufferStringConverter : JsonConverter<BufferString>
 {
-    private Memory<char> Items { get; set; } = allocator.Alloc(copacity);
-    private readonly ArenaAllocator<char> Allocator = allocator;
-    public int Count { get; set; }
+    public override void Write(Utf8JsonWriter writer, BufferString value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.AsSpan());
+    }
 
+    public override BufferString Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Изменяемая строка похожая на StringBuilder но на основе ArenaAllocator /// 
+/// </summary>
+[JsonConverter(typeof(BufferStringConverter))]
+public struct BufferString
+{
+    private char[] _items;
+    public char[] Items { readonly get => _items; private set => _items = value; }
+
+    private readonly ArenaAllocator<char> Allocator;
+
+    public int Count { get; private set; }
+
+    private int _start;
+    public int Start { readonly get => _start; private set => _start = value; }
+    private int _copacity;
+
+    public BufferString(ArenaAllocator<char> allocator, int copacity = 32)
+    {
+        _copacity = copacity;
+        Allocator = allocator;
+        allocator.Alloc(copacity, out _items, out _start);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Span<char> AsSpan() => Items.Span[..Count];
+    public readonly Span<char> AsSpan() => _items.AsSpan(_start, Count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Append(ReadOnlySpan<char> item)
+    public void Append(in ReadOnlySpan<char> item)
     {
         var count = Count + item.Length;
-        if (count > Items.Length)
-        {
+        if (count > _copacity) EnsureCapacity(count);
 
-            //throw new Exception("Выход за отведённые размеры");
-        }
+        item.CopyTo(_items.AsSpan(_start + Count, item.Length));
 
-        item.CopyTo(Items.Span.Slice(Count, item.Length));
         Count = count;
-        Items.Span[Count] = '\0';
+        // Добавляем последний символ 
+        _items[_start + Count] = '\0';
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(char item)
     {
         var count = Count + 1;
-        EnsureCapacity(count);
+        if (count > Items.Length) EnsureCapacity(count);
 
-        Items.Span[count] = item;
+        _items[_start + Count] = item;
 
         Count = count;
-        Items.Span[Count] = '\0';
+        // Добавляем последний символ
+        _items[_start + Count] = '\0';
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append<T>(T value, scoped ReadOnlySpan<char> format = default, int bufferSize = 36, IFormatProvider? formatProvider = null) where T : ISpanFormattable
-    {
-        var sp = Items.Span[Count..];
+    {   
+        var sp = _items.AsSpan(_start + Count, _copacity - Count);
 
         if (!value.TryFormat(sp, out var charsWritten, format, formatProvider))
             throw new InvalidOperationException($"Не удалось вставить {value} в указанный буфер. Буфер размера: {bufferSize}) не достаточно");
@@ -55,17 +87,16 @@ public struct BufferString(ArenaAllocator<char> allocator, int copacity = 32)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void EnsureCapacity(int copacity)
     {
-        if (copacity <= Items.Length) return;
+        _copacity = copacity * 2 + 2;
 
-        var newBuffer = Allocator.Alloc(copacity * 2 + 2);
+        var oldarray = _items;
+        var oldStart = _start;
 
-        AsSpan().CopyTo(newBuffer.Span[..Count]);
+        Allocator.Alloc(_copacity, out _items, out _start);
 
-        Items = newBuffer;
+        oldarray.AsSpan(oldStart, Count).CopyTo(AsSpan());
     }
 
-    public override string ToString()
-    {
-        return AsSpan().ToString();
-    }
+    public override readonly string ToString() => AsSpan().ToString();
+
 }

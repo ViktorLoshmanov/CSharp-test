@@ -34,6 +34,18 @@ public partial class ArenaAllocator<T>() : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Alloc(int length, out T[] array, out int start)
+    {
+        var newCount = _count + length;
+        if (newCount > _buffer.Length)
+            _buffer = GC.AllocateUninitializedArray<T>(GrowCap(_buffer.Length, newCount));
+
+        start = _count;
+        array = _buffer;
+        _count = newCount;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GrowCap(int oldCap, int need)
     {
         const int minGrow = 256;

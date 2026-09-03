@@ -1,5 +1,7 @@
 ﻿using apiTest.Arena;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace apiTest;
 
@@ -48,43 +50,31 @@ public class Strings
 
     public unsafe static int CompareUnsafe(string s1, string s2)
     {
-        //var (ne1, ne2) = (string.IsNullOrEmpty(s1), string.IsNullOrEmpty(s2));
-
-        //if (ne1 && ne2) return 0;
-        //if (ne1) return -1;
-        //if (ne2) return 1;
-
         fixed (char* pointer1 = s1, pointer2 = s2)
             return CompareUnsafe(pointer1, pointer2);
     }
 
-    public unsafe static int CompareUnsafe(ref BufferString s1, ref BufferString s2)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static int CompareUnsafe(in BufferString s1, in BufferString s2)
     {
-        //var (ne1, ne2) = (s1.Count == 0, s2.Count == 0);
-
-        //if (ne1 && ne2) return 0;
-        //if (ne1) return -1;
-        //if (ne2) return 1;
-        fixed (char* pointer1 = s1.AsSpan(), pointer2 = s2.AsSpan())
+        fixed (char* pointer1 = &s1.Items[s1.Start], pointer2 = &s2.Items[s2.Start])
             return CompareUnsafe(pointer1, pointer2);
     }
 
     public static int CompareSafe(string s1, string s2)
     {
-        //var (ne1, ne2) = (string.IsNullOrEmpty(s1), string.IsNullOrEmpty(s2));
+        var sp1 = s1.AsSpan();
+        var sp2 = s2.AsSpan();
 
-        //if (ne1 && ne2) return 0;
-        //if (ne1) return -1;
-        //if (ne2) return 1;
-
-        var (count1, count2) = (s1.Length, s2.Length);
+        var (count1, count2) = (sp1.Length, sp2.Length);
         var (i1, i2) = (0, 0);
 
+        
         while (i1 < count1)
         {
             if (i2 >= count2) return 1;
 
-            var (char1, char2) = (s1[i1++], s2[i2++]);
+            var (char1, char2) = (sp1[i1++], sp2[i2++]);
 
             if (char1 >= '0' && char1 <= '9' && char2 >= '0' && char2 <= '9')
             {
@@ -92,7 +82,7 @@ public class Strings
 
                 while (i1 < count1)
                 {
-                    char1 = s1[i1];
+                    char1 = sp1[i1];
                     if (char1 >= '0' && char1 <= '9')
                     {
                         num1 = 10 * num1 + char1 - '0';
@@ -104,7 +94,7 @@ public class Strings
                 // Читаем остальные цифры второго числа
                 while (i2 < count2)
                 {
-                    char2 = s2[i2];
+                    char2 = sp2[i2];
                     if (char2 >= '0' && char2 <= '9')
                     {
                         num2 = 10 * num2 + char2 - '0';

@@ -43,7 +43,7 @@ public class ObrazResultBlazingConverter : JsonConverter<ObrazResultBlazing>
 
         writer.WriteStartArray();
 
-        Span<char> charSpan = stackalloc char[128];
+        Span<byte> charSpan = stackalloc byte[128];
         var sp = value.Coords.Span;
         for (var i = 0; i < sp.Length; i++)
             //writer.WriteNumberValue(sp[i]);

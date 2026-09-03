@@ -1,42 +1,39 @@
 ﻿using apiTest.Arena;
 using drawer.Models;
-using System.Buffers;
-using System.Reflection;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
 
 namespace drawer;
 
 internal static class Drawer
 {
+    public delegate void ActionRef<T>(ref T obj) where T : allows ref struct;
     /// <summary>
     /// Отсечение графических образов по прямоугольнику
     /// </summary>
     /// <param name="l">Слой</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Коллекция отсеченных графических образов</returns>
-    private static void ClipPrimitives(Legend l, ref Rect rect, Action<Obraz> visit)
+    private static void ClipPrimitives(Legend l, ref Rect rect, Action<string, double[]> visit)
     {
         foreach (var g in l.Primitives)
         {
             var r = g.Rect;
             if (r.Left >= rect.Left && r.Bottom >= rect.Bottom && r.Right <= rect.Right && r.Top <= rect.Top)
-                // Целиком лежит внутри прямоугольника
-                visit(new Obraz { Coords = [.. g.Coords], Name = g.Name });
-            else //if (r.Left < rect.Right && r.Bottom < rect.Top && r.Right > rect.Left && r.Top > rect.Bottom)
+            // Целиком лежит внутри прямоугольника               
+                visit(g.Name, g.Coords);//new Obraz { Coords = [.. g.Coords], Name = g.Name });            
+            else
                 // Необходимо отсекать
                 switch (l.Type)
                 {
                     case GrTypeEnum.Line:
-                        foreach (var cs in Polyline.ClipPolyline(g, rect))
-                            visit(new Obraz { Coords = cs, Name = g.Name });
+                        foreach (var cs in Polyline.ClipPolyline(g, rect))                        
+                            visit(g.Name, cs);// new Obraz { Coords = cs, Name = g.Name });
+                        
                         break;
                     case GrTypeEnum.Polygon:
                         {
                             var cs = Polygon.ClipPolygon(g, rect);
-                            if (cs.Length > 0)
-                                visit(new Obraz { Coords = cs, Name = g.Name });
+                            if (cs.Length > 0)                            
+                                visit(g.Name, cs);//new Obraz { Coords = cs, Name = g.Name });                            
                         }
                         break;
                 }
@@ -61,11 +58,11 @@ internal static class Drawer
 
             var mas = new List<ObrazResult>(l.Primitives.Length);
 
-            ClipPrimitives(l, ref rect, obraz =>
+            ClipPrimitives(l, ref rect, (name, cs) =>
                 mas.Add(new ObrazResult
                 {
-                    Name = obraz.Name,
-                    Coords = obraz.Coords
+                    Name = name,
+                    Coords = cs
                        .Optimize(distance)
                        .Translate(ref pr)
                 })
@@ -121,7 +118,7 @@ internal static class Drawer
                 if (r.Left >= left && r.Bottom >= bottom && r.Right <= right && r.Top <= top)
                 // Целиком лежит внутри прямоугольника
                 {
-                    gSp[index++] = new ObrazResultBlazing
+                    gSp[index++] = new()
                     {
                         Name = g.Name,
                         Coords = g.Coords.OptimizeBlazing(allocator, distance).Translate(ref pr)
@@ -133,7 +130,7 @@ internal static class Drawer
                     {
                         case GrTypeEnum.Line:
                             foreach (var cs in Polyline.ClipPolyline(g, rect))
-                                gSp[index++] = new ObrazResultBlazing
+                                gSp[index++] = new()
                                 {
                                     Name = g.Name,
                                     Coords = cs.OptimizeBlazing(allocator, distance).Translate(ref pr)
@@ -143,7 +140,7 @@ internal static class Drawer
                             {
                                 var cs = Polygon.ClipPolygon(g, rect);
                                 if (cs.Length > 0)
-                                    gSp[index++] = new ObrazResultBlazing
+                                    gSp[index++] = new()
                                     {
                                         Name = g.Name,
                                         Coords = cs.OptimizeBlazing(allocator, distance).Translate(ref pr)
