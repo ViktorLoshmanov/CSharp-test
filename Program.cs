@@ -65,13 +65,13 @@ builder.Services.AddScoped<ArenasService>();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World dotnet!");
+app.MapGet("/", static () => "Hello World dotnet!");
 
-app.MapGet("/readfile", () => File.ReadAllTextAsync("data.txt"))
+app.MapGet("/readfile", static () => File.ReadAllTextAsync("data.txt"))
 .WithSummary("Чтение файла")
 .Produces<string>(StatusCodes.Status200OK);
 
-app.MapGet("/fibonacci", () =>
+app.MapGet("/fibonacci", static () =>
 {
     var (a, b) = (0UL, 1UL);
     for (var i = 2; i < 2000000; i++)
@@ -81,11 +81,14 @@ app.MapGet("/fibonacci", () =>
 });
 
 
-var pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100, LeftTop = new Vector<double>([Init.r.Left, Init.r.Top, Init.r.Left, Init.r.Top]) };
-var rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
+//var pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100, LeftTop = new Vector<double>([Init.r.Left, Init.r.Top, Init.r.Left, Init.r.Top]) };
+//var rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
 
-app.MapGet("/map", (double x = 0, double y = 0) =>
+app.MapGet("/map", static (double x = 0, double y = 0) =>
 {
+    var pr = PropertiesConfig.pr;
+    var rect = PropertiesConfig.rect;
+
     x /= 100;
     y /= 100;
 
@@ -115,8 +118,11 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
 //.Produces<int>(StatusCodes.Status200OK);
 
 // Эта для тестирования с языками которые не умеют нормально хранить между запросами заранее загруженные данные, например PHP
-app.MapGet("/mapPerformance", (double x = 0, double y = 0) =>
+app.MapGet("/mapPerformance", static (double x = 0, double y = 0) =>
 {
+    var pr = PropertiesConfig.pr;
+    var rect = PropertiesConfig.rect;
+
     x /= 100;
     y /= 100;
 
@@ -178,8 +184,11 @@ app.MapGet("/mapPerformance", (double x = 0, double y = 0) =>
 //});
 
 
-app.MapGet("/mapBlazing", async (HttpContext context, double x = 0, double y = 0) =>
+app.MapGet("/mapBlazing", static async (HttpContext context, double x = 0, double y = 0) =>
 {
+    var pr = PropertiesConfig.pr;
+    var rect = PropertiesConfig.rect;
+
     x /= 100;
     y /= 100;
 
@@ -229,8 +238,11 @@ app.MapGet("/mapBlazing", async (HttpContext context, double x = 0, double y = 0
 //.Produces<int>(StatusCodes.Status200OK);
 
 
-app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
+app.MapGet("/mapJSON", static (double x = 0, double y = 0) =>
 {
+    var pr = PropertiesConfig.pr;
+    var rect = PropertiesConfig.rect;
+
     x /= 100;
     y /= 100;
 
@@ -291,8 +303,11 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
 //.Produces<Layer[]>(StatusCodes.Status200OK);
 
 
-app.MapGet("/mapJSONBlazing", async (HttpContext context, double x = 0, double y = 0) =>
+app.MapGet("/mapJSONBlazing", static async (HttpContext context, double x = 0, double y = 0) =>
 {
+    var pr = PropertiesConfig.pr;
+    var rect = PropertiesConfig.rect;
+
     x /= 100;
     y /= 100;
 
@@ -340,7 +355,7 @@ const string STR2 = "asrgfsadf12321";
 
 
 // Функция используется в натуральной сортировке, цель теста выделить все 10000 пар строк в памяти и сравнить их, из-за лени выделение 10000 пар строк происходит в том же цикле где и сравнение (Для тех кто не прочитал ниже)
-app.MapGet("/naturalsort", () =>
+app.MapGet("/naturalsort", static () =>
 {
     var sp1 = STR1.AsSpan();
     var sp2 = STR2.AsSpan();
@@ -358,7 +373,7 @@ app.MapGet("/naturalsort", () =>
 //.WithDescription("Функция используется в натуральной сортировке, цель теста выделить все 10000 пар строк в памяти и сравнить их, из-за лени выделение 10000 пар строк происходит в том же цикле где и сравнение");
 
 
-app.MapGet("/naturalsortblazing", () =>
+app.MapGet("/naturalsortblazing", static () =>
 {
     var result = 0;
 
@@ -431,3 +446,9 @@ app.MapGet("/naturalsortHack", NaturalSortHack);
 //app.UseSwaggerUI();
 
 app.Run();
+
+static class PropertiesConfig
+{
+    public static readonly DrawProperties pr = new DrawProperties { Left = Init.r.Left, Top = Init.r.Top, Scale = 0.37037037037037035, Mashtab = 100, LeftTop = new Vector<double>([Init.r.Left, Init.r.Top, Init.r.Left, Init.r.Top]) };
+    public static readonly Rect rect = new Rect { Left = 1200, Bottom = 50, Right = 4000, Top = 2850 };
+}

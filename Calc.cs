@@ -46,39 +46,77 @@ internal static class Calc
     }
 
     /** Удаление точек которые не будут отображаться */
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Memory<double> Optimize(this double[] mas, double l)
     {
-        var count = mas.Length;
+        int count = mas.Length;
 
 
         if (count < 5)
             return mas;
         
 
-        var coords = GC.AllocateUninitializedArray<double>(mas.Length);
+        ReadOnlySpan<double> sp = mas.AsSpan();
 
-        var sp = mas.AsSpan();
+        double[] coordsArray = GC.AllocateUninitializedArray<double>(sp.Length);
 
-        var lastCoord1 = sp[..2];
-        var lastCoord2 = sp.Slice(2, 2);
-        var index = 0;
+        Span<double> coords = coordsArray.AsSpan();
 
-        (coords[index++], coords[index++]) = (lastCoord1[0], lastCoord1[1]);
+        // lastCoord1 применялось только для загрузки vP1 - поэтому его можно не хранить в отдельной переменной а загружать в vP1 из sp.Slice(0, 2) в цикле
+        //ReadOnlySpan<double> lastCoord1 = sp.Slice(0, 2);
+        // lastCoord2 применялось только для загрузки vP2 - поэтому его можно не хранить в отдельной переменной а загружать в vP2 из sp.Slice(i, 2) в цикле
+        //var lastCoord2 = sp.Slice(2, 2);
 
-        var lSq = l * l;
+        double lSq = l * l;
 
-        for (var i = 4; i < count; i += 2)
-            if (!IsPointOnLine(lastCoord1, lastCoord2, sp.Slice(i, 2), lSq))
+        Vector128<double> vP1 = Vector128.Create(sp.Slice(0, 2));
+        Vector128<double> vP2 = Vector128.Create(sp.Slice(2, 2));
+
+        int index = 0;
+        vP1.StoreUnsafe(ref MemoryMarshal.GetReference(coords.Slice(index, 2)));
+        index += 2;
+
+        // сохраняем в предыдущую позицию (sp.Slice(i - 2, 2)) в vP для первичной загрузки в vPrevious
+        Vector128<double> vP = vP2;
+
+        // для первой итерации выносим из цикла вычичисление cd и lenSQ так как они вычисляются из предварительно загруженных vP1 и vP2 из lastCoord1 и lastCoord2
+        Vector128<double> cd = vP2 - vP1;
+        double lenSQ = Vector128.Sum(cd * cd); //var lenSQ = cd[0] * cd[0] + cd[1] * cd[1];
+
+        for (int i = 4; i < (uint)sp.Length; i += 2)
+        {
+            // сохраняем в предыдущую позицию vP
+            Vector128<double> vPrevious = vP;
+            vP = Vector128.Create(sp.Slice(i, 2));
+
+            if (!IsPointOnLine(vP1, vP2, vP, lSq, cd, lenSQ))
             {
-                lastCoord1 = sp.Slice(i - 2, 2);
-                lastCoord2 = sp.Slice(i, 2);
+                //lastCoord1 = sp.Slice(i - 2, 2);
+                //lastCoord2 = sp.Slice(i, 2);
+                // так как lastCoord1 и lastCoord2 в цикле меняются только здесь то vP1 и vP2 можно загружать только здесь
+                //vP1 = Vector128.Create(lastCoord1);
+                // так как vP1 всегда загружается из предыдущей позиции то для предыдущей позиции заводим переменную vPrevious и будем загружать vP1 из vPrevious
+                vP1 = vPrevious;
 
-                (coords[index++], coords[index++]) = (lastCoord1[0], lastCoord1[1]);
+                // так как текущая позиция vP2 (sp.Slice(i, 2)) совпадает с vP то просто копируем vP в vP2 без загрузки из sp.Slice(i, 2)
+                //vP2 = Vector128.Create(sp.Slice(i, 2));
+                vP2 = vP;
+
+                //в lastCoord1 содержимое vP1 поэтому можно в coords записать vP1
+                //lastCoord1.CopyTo(coords.AsSpan(index));
+                vP1.StoreUnsafe(ref MemoryMarshal.GetReference(coords.Slice(index, 2)));
+                index += 2;
+
+                // так как vP2 и vP1 в цикле меняются только здесь то cd и lenSQ можно вычислять только здесь
+                cd = vP2 - vP1;
+                lenSQ = Vector128.Sum(cd * cd); //var lenSQ = cd[0] * cd[0] + cd[1] * cd[1];
             }
+        }
 
-        (coords[index++], coords[index++]) = (sp[^2], sp[^1]);
-                
-        return new Memory<double>(coords, 0, index);
+        sp.Slice(sp.Length - 2).CopyTo(coords.Slice(index, 2));
+        index += 2;
+
+        return new Memory<double>(coordsArray, 0, index);
     }
 
 
@@ -164,35 +202,28 @@ internal static class Calc
 
     /** Находится ли следующая точка на линии с определённым допуском */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsPointOnLine(ReadOnlySpan<double> p1, ReadOnlySpan<double> p2, ReadOnlySpan<double> p, double l)
+    public static bool IsPointOnLine(Vector128<double> vP1, Vector128<double> vP2, Vector128<double> vP, double lSq,
+        Vector128<double> cd, double lenSQ)
     {
-        var vP = Vector128.Create(p);
-        var vP1 = Vector128.Create(p1);
-        var vP2 = Vector128.Create(p2);
-
-        var ab = vP - vP1;
-
-        var cd = vP2 - vP1;
-
-        var lenSQ = cd[0] * cd[0] + cd[1] * cd[1];
-
         // Вычисляем ближайшую точку на линии
         Vector128<double> xy;
         if (lenSQ == 0)
             xy = vP1;
         else
         {
-            var param = ab[0] * cd[0] + ab[1] * cd[1];
+            Vector128<double> ab = vP - vP1;
+
+            double param = Vector128.Sum(ab * cd); // var param = ab[0] * cd[0] + ab[1] * cd[1];
             if (param < 0)
                 xy = vP1;
             else if (param > 1)
                 xy = vP2;
             else
-                xy = vP1 + cd * param;
+                xy = Vector128.MultiplyAddEstimate(cd, Vector128.CreateScalar(param), vP1); //xy = vP1 + cd * param;
         }
 
-        var dP = vP - xy;
+        Vector128<double> dP = vP - xy;
 
-        return dP[0] * dP[0] + dP[1] * dP[1] < l;
+        return Vector128.Sum(dP * dP) < lSq; //return dP[0] * dP[0] + dP[1] * dP[1] < l;
     }
 }

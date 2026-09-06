@@ -1,39 +1,49 @@
 ﻿using apiTest.Arena;
 using drawer.Models;
+using System.Runtime.CompilerServices;
 
 namespace drawer;
 
 internal static class Drawer
 {
     public delegate void ActionRef<T>(ref T obj) where T : allows ref struct;
+
+    public interface IClipPrimitivesVisitor
+    {
+        void Visit(string name, double[] cs);
+    }
+
     /// <summary>
     /// Отсечение графических образов по прямоугольнику
     /// </summary>
     /// <param name="l">Слой</param>
     /// <param name="rect">Прямоугольник для отсечения</param>
     /// <returns>Коллекция отсеченных графических образов</returns>
-    private static void ClipPrimitives(Legend l, ref Rect rect, Action<string, double[]> visit)
+    private static void ClipPrimitives<TVisitor>(Legend l, in Rect rectRef, in TVisitor visitor, List<double> pl)
+        where TVisitor : IClipPrimitivesVisitor, allows ref struct
     {
+        Rect rect = rectRef;
+
         foreach (var g in l.Primitives)
         {
             var r = g.Rect;
             if (r.Left >= rect.Left && r.Bottom >= rect.Bottom && r.Right <= rect.Right && r.Top <= rect.Top)
                 // Целиком лежит внутри прямоугольника               
-                visit(g.Name, [.. g.Coords]);
+                visitor.Visit(g.Name, [.. g.Coords]);
             else
                 // Необходимо отсекать
                 switch (l.Type)
                 {
                     case GrTypeEnum.Line:
-                        foreach (var cs in Polyline.ClipPolyline(g, rect))                        
-                            visit(g.Name, cs);
+                        foreach (var cs in Polyline.ClipPolyline(g, rect, pl))                        
+                            visitor.Visit(g.Name, cs);
                         
                         break;
                     case GrTypeEnum.Polygon:
                         {
-                            var cs = Polygon.ClipPolygon(g, rect);
-                            if (cs.Length > 0)                            
-                                visit(g.Name, cs);
+                            var cs = Polygon.ClipPolygon(g, rect, pl);
+                            if (cs.Length > 0)
+                                visitor.Visit(g.Name, cs);
                         }
                         break;
                 }
@@ -50,7 +60,7 @@ internal static class Drawer
     /// <returns>Результат отсечения и преобразования к экранным координатам</returns>
     public static IEnumerable<LayerResult> BuildGenerator(Legend[] ls, DrawProperties1 pr, Rect rect)
     {
-        var distance = pr.Scale;
+        List<double> pl = new List<double>();
 
         foreach (var l in ls)
         {
@@ -58,17 +68,29 @@ internal static class Drawer
 
             var mas = new List<ObrazResult>(l.Primitives.Length);
 
-            ClipPrimitives(l, ref rect, (name, cs) =>
-                mas.Add(new ObrazResult
-                {
-                    Name = name,
-                    Coords = cs
-                       .Optimize(distance)
-                       .Translate(ref pr)
-                })
-            );
+            ClipPrimitives(l, rect, new ClipPrimitivesVisitor(pr, mas), pl);
 
             yield return new() { LegendId = l.Id, Obrazes = mas };
+        }
+    }
+
+    private ref struct ClipPrimitivesVisitor(DrawProperties1 pr, List<ObrazResult> mas)
+        : IClipPrimitivesVisitor
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Visit(string name, double[] cs)
+        {
+            var distance = pr.Scale;
+
+            var obrazResult = new ObrazResult
+            {
+                Name = name,
+                Coords = cs
+                   .Optimize(distance)
+                   .Translate(ref pr)
+            };
+
+            mas.Add(obrazResult);
         }
     }
 
@@ -88,6 +110,8 @@ internal static class Drawer
         ref DrawProperties1 pr,
         ref Rect rect)
     {
+        List<double> pl = new List<double>();
+
         var distance = pr.Scale;
 
         var reuslt = allocatorResult.Alloc(ls.Length);
@@ -129,7 +153,7 @@ internal static class Drawer
                     switch (l.Type)
                     {
                         case GrTypeEnum.Line:
-                            foreach (var cs in Polyline.ClipPolyline(g, rect))
+                            foreach (var cs in Polyline.ClipPolyline(g, rect, pl))
                                 gSp[index++] = new()
                                 {
                                     Name = g.Name,
@@ -138,7 +162,7 @@ internal static class Drawer
                             break;
                         case GrTypeEnum.Polygon:
                             {
-                                var cs = Polygon.ClipPolygon(g, rect);
+                                var cs = Polygon.ClipPolygon(g, rect, pl);
                                 if (cs.Length > 0)
                                     gSp[index++] = new()
                                     {

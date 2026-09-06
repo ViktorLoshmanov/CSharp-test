@@ -1,22 +1,23 @@
 ﻿using drawer.Models;
+using System.Runtime.InteropServices;
 
 namespace drawer;
 
 public static class Polyline
 {
-    private static List<double[]> ClipLeft(double[] coords, double left)
+    private static List<double[]> ClipLeft(double[] coords, double left, List<double> pl)
     {
         var res = new List<double[]>();
         if (coords.Length == 0) return res;
 
-        var pl = new List<double>(coords.Length * 2);
+        CollectionsMarshal.SetCount(pl, 0);
 
         var (px1, py1) = (coords[0], coords[1]);
 
         if (px1 >= left)
         {
-            pl.Add(px1);
-            pl.Add(py1);
+            pl.AddRange(px1,
+                py1);
         }
 
         for (var i = 2; i < coords.Length; i += 2)
@@ -25,44 +26,44 @@ public static class Polyline
 
             if (px1 >= left && px2 >= left)
             {
-                pl.Add(px2);
-                pl.Add(py2);
+                pl.AddRange(px2,
+                    py2);
             }
             else if (px1 < left && px2 > left)
             {
-                pl.Add(left);
-                pl.Add((left - px1) * (py2 - py1) / (px2 - px1) + py1);
+                pl.AddRange(left,
+                    (left - px1) * (py2 - py1) / (px2 - px1) + py1,
 
-                pl.Add(px2);
-                pl.Add(py2);
+                    px2,
+                    py2);
             }
             else if (px1 > left && px2 < left)
             {
-                pl.Add(left);
-                pl.Add((left - px1) * (py2 - py1) / (px2 - px1) + py1);
+                pl.AddRange(left,
+                    (left - px1) * (py2 - py1) / (px2 - px1) + py1);
 
-                res.Add([.. pl]);
-                pl = new List<double>(coords.Length * 2);
+                res.Add(pl.ToArray());
+                CollectionsMarshal.SetCount(pl, 0);
 
             }
             (px1, py1) = (px2, py2);
         }
-        if (pl.Count > 0) res.Add([.. pl]);
+        if (pl.Count > 0) res.Add(pl.ToArray());
         return res;
     }
-    private static List<double[]> ClipRight(double[] coords, double right)
+    private static List<double[]> ClipRight(double[] coords, double right, List<double> pl)
     {
         var res = new List<double[]>();
         if (coords.Length == 0) return res;
 
-        var pl = new List<double>(coords.Length * 2);
+        CollectionsMarshal.SetCount(pl, 0);
 
         var (px1, py1) = (coords[0], coords[1]);
 
         if (px1 <= right)
         {
-            pl.Add(px1);
-            pl.Add(py1);
+            pl.AddRange(px1,
+                py1);
         }
 
         for (var i = 2; i < coords.Length; i += 2)
@@ -71,45 +72,45 @@ public static class Polyline
 
             if (px1 <= right && px2 <= right)
             {
-                pl.Add(px2);
-                pl.Add(py2);
+                pl.AddRange(px2,
+                    py2);
             }
             else if (px1 > right && px2 < right)
             {
-                pl.Add(right);
-                pl.Add((right - px1) * (py2 - py1) / (px2 - px1) + py1);
+                pl.AddRange(right,
+                    (right - px1) * (py2 - py1) / (px2 - px1) + py1,
 
-                pl.Add(px2);
-                pl.Add(py2);
+                    px2,
+                    py2);
             }
             else if (px1 < right && px2 > right)
             {
-                pl.Add(right);
-                pl.Add((right - px1) * (py2 - py1) / (px2 - px1) + py1);
+                pl.AddRange(right,
+                    (right - px1) * (py2 - py1) / (px2 - px1) + py1);
 
-                res.Add([.. pl]);
+                res.Add(pl.ToArray());
 
-                pl = new List<double>(coords.Length * 2);
+                CollectionsMarshal.SetCount(pl, 0);
             }
             (px1, py1) = (px2, py2);
 
         }
-        if (pl.Count > 0) res.Add([.. pl]);
+        if (pl.Count > 0) res.Add(pl.ToArray());
         return res;
     }
-    private static List<double[]> ClipBottom(double[] coords, double bottom)
+    private static List<double[]> ClipBottom(double[] coords, double bottom, List<double> pl)
     {
         var res = new List<double[]>();
         if (coords.Length == 0) return res;
 
-        var pl = new List<double>(coords.Length * 2);
+        CollectionsMarshal.SetCount(pl, 0);
 
         var (px1, py1) = (coords[0], coords[1]);
 
         if (py1 >= bottom)
         {
-            pl.Add(px1);
-            pl.Add(py1);
+            pl.AddRange(px1,
+                py1);
         }
 
         for (var i = 2; i < coords.Length; i += 2)
@@ -118,47 +119,47 @@ public static class Polyline
 
             if (py1 >= bottom && py2 >= bottom)
             {
-                pl.Add(px2);
-                pl.Add(py2);
+                pl.AddRange(px2,
+                    py2);
             }
             else if (py1 < bottom && py2 > bottom)
             {
-                pl.Add((bottom - py1) * (px2 - px1) / (py2 - py1) + px1);
-                pl.Add(bottom);
+                pl.AddRange((bottom - py1) * (px2 - px1) / (py2 - py1) + px1,
+                    bottom,
 
-                pl.Add(px2);
-                pl.Add(py2);
+                    px2,
+                    py2);
             }
             else if (py1 > bottom && py2 < bottom)
             {
-                pl.Add(px1);
-                pl.Add(py1);
+                pl.AddRange(px1,
+                    py1,
 
-                pl.Add((bottom - py1) * (px2 - px1) / (py2 - py1) + px1);
-                pl.Add(bottom);
+                    (bottom - py1) * (px2 - px1) / (py2 - py1) + px1,
+                    bottom);
 
-                res.Add([.. pl]);
+                res.Add(pl.ToArray());
 
-                pl = new List<double>(coords.Length * 2);
+                CollectionsMarshal.SetCount(pl, 0);
             }
             (px1, py1) = (px2, py2);
         }
-        if (pl.Count > 0) res.Add([.. pl]);
+        if (pl.Count > 0) res.Add(pl.ToArray());
         return res;
     }
-    private static List<double[]> ClipTop(double[] coords, double top)
+    private static List<double[]> ClipTop(double[] coords, double top, List<double> pl)
     {
         var res = new List<double[]>();
         if (coords.Length == 0) return res;
 
-        var pl = new List<double>(coords.Length * 2);
+        CollectionsMarshal.SetCount(pl, 0);
 
         var (px1, py1) = (coords[0], coords[1]);
 
         if (py1 <= top)
         {
-            pl.Add(px1);
-            pl.Add(py1);
+            pl.AddRange(px1,
+                py1);
         }
 
         for (var i = 2; i < coords.Length; i += 2)
@@ -167,49 +168,49 @@ public static class Polyline
 
             if (py1 <= top && py2 <= top)
             {
-                pl.Add(px2);
-                pl.Add(py2);
+                pl.AddRange(px2,
+                    py2);
             }
             else if (py1 < top && py2 > top)
             {
-                pl.Add(px1);
-                pl.Add(py1);
+                pl.AddRange(px1,
+                    py1,
 
-                pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
-                pl.Add(top);
+                    (top - py1) * (px2 - px1) / (py2 - py1) + px1,
+                    top);
 
-                res.Add([.. pl]);
-                pl = new List<double>(coords.Length * 2);
+                res.Add(pl.ToArray());
+                CollectionsMarshal.SetCount(pl, 0);
             }
             else if (py1 > top && py2 < top)
             {
-                pl.Add((top - py1) * (px2 - px1) / (py2 - py1) + px1);
-                pl.Add(top);
+                pl.AddRange((top - py1) * (px2 - px1) / (py2 - py1) + px1,
+                    top,
 
-                pl.Add(px2);
-                pl.Add(py2);
+                    px2,
+                    py2);
 
 
             }
             (px1, py1) = (px2, py2);
         }
-        if (pl.Count > 0) res.Add([.. pl]);
+        if (pl.Count > 0) res.Add(pl.ToArray());
         return res;
     }
 
 
     /** Отсечение полилинии по прямоугольнику */
-    public static List<double[]> ClipPolyline(Primitive g, Rect rect)
+    public static List<double[]> ClipPolyline(Primitive g, Rect rect, List<double> pl)
     {
         var res = (g.Rect.Left < rect.Left)
-            ? ClipLeft(g.Coords, rect.Left)
+            ? ClipLeft(g.Coords, rect.Left, pl)
             : [[..g.Coords]];
 
         if (g.Rect.Bottom < rect.Bottom)
         {
             var tmp = new List<double[]>(res.Count * 2);
             foreach (var cs in res)
-                tmp.AddRange(ClipBottom(cs, rect.Bottom));
+                tmp.AddRange(ClipBottom(cs, rect.Bottom, pl));
             res = tmp;
         }
 
@@ -217,7 +218,7 @@ public static class Polyline
         {
             var tmp = new List<double[]>(res.Count * 2);
             foreach (var cs in res)
-                tmp.AddRange(ClipRight(cs, rect.Right));
+                tmp.AddRange(ClipRight(cs, rect.Right, pl));
             res = tmp;
         }
 
@@ -225,7 +226,7 @@ public static class Polyline
         {
             var tmp = new List<double[]>(res.Count * 2);
             foreach (var cs in res)
-                tmp.AddRange(ClipTop(cs, rect.Top));
+                tmp.AddRange(ClipTop(cs, rect.Top, pl));
             res = tmp;
         }
 
