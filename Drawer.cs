@@ -18,22 +18,22 @@ internal static class Drawer
         {
             var r = g.Rect;
             if (r.Left >= rect.Left && r.Bottom >= rect.Bottom && r.Right <= rect.Right && r.Top <= rect.Top)
-            // Целиком лежит внутри прямоугольника               
-                visit(g.Name, g.Coords);//new Obraz { Coords = [.. g.Coords], Name = g.Name });            
+                // Целиком лежит внутри прямоугольника               
+                visit(g.Name, [.. g.Coords]);
             else
                 // Необходимо отсекать
                 switch (l.Type)
                 {
                     case GrTypeEnum.Line:
                         foreach (var cs in Polyline.ClipPolyline(g, rect))                        
-                            visit(g.Name, cs);// new Obraz { Coords = cs, Name = g.Name });
+                            visit(g.Name, cs);
                         
                         break;
                     case GrTypeEnum.Polygon:
                         {
                             var cs = Polygon.ClipPolygon(g, rect);
                             if (cs.Length > 0)                            
-                                visit(g.Name, cs);//new Obraz { Coords = cs, Name = g.Name });                            
+                                visit(g.Name, cs);
                         }
                         break;
                 }

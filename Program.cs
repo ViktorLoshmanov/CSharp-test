@@ -2,10 +2,11 @@
 using apiTest.Arena;
 using drawer;
 using drawer.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.Diagnostics;
 //using LinkDotNet.StringBuilder;
 using System.Numerics;
-using System.Runtime.Intrinsics;
-//using System.Text.Encodings.Web;
 
 
 Init.tt();
@@ -38,7 +39,18 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     // options.SerializerOptions.Converters.Add(new MemoryDoubleRyuConverter());
 });
 
+//builder.Services.AddResponseCompression(options =>
+//{
+//    // Включаем сжатие для HTTPS
+//    //options.EnableForHttps = true;
+
+//    // Добавляем провайдера Brotli
+//    options.Providers.Add<BrotliCompressionProvider>();
+//});
+
+
 builder.Services.AddScoped<ArenasService>();
+
 //// Регистрация службы ограничения скорости
 //builder.Services.AddRateLimiter(options =>
 //{
@@ -102,8 +114,71 @@ app.MapGet("/map", (double x = 0, double y = 0) =>
 //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
 //.Produces<int>(StatusCodes.Status200OK);
 
+// Эта для тестирования с языками которые не умеют нормально хранить между запросами заранее загруженные данные, например PHP
+app.MapGet("/mapPerformance", (double x = 0, double y = 0) =>
+{
+    x /= 100;
+    y /= 100;
 
-app.MapGet("/mapBlazing", (ArenasService arenas, HttpContext context, double x = 0, double y = 0) =>
+    var pr1 = new DrawProperties1
+    {
+        Mashtab = pr.Mashtab,
+        Scale = pr.Scale,
+        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
+    };
+
+    var rect1 = new Rect
+    {
+        Left = rect.Left + x,
+        Top = rect.Top + y,
+        Bottom = rect.Bottom,
+        Right = rect.Right
+    };
+
+    var stopwatch = Stopwatch.StartNew();
+    int count;
+    for (var i = 0; i < 1000; i++)
+    {
+        count = Drawer.BuildGenerator(Init.ls, pr1, rect1).Count();
+    }
+
+    stopwatch.Stop();
+    return ((double)stopwatch.ElapsedMilliseconds) / 1000;
+
+});
+
+//app.MapGet("/mapBlazing", (ArenasService arenas, double x = 0, double y = 0) =>
+//{
+//    x /= 100;
+//    y /= 100;
+
+//    var vadd = new Vector<double>([x, y, x, y]);
+//    var pr1 = new DrawProperties1
+//    {
+//        Mashtab = pr.Mashtab,
+//        Scale = pr.Scale,
+//        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+//        LeftTop = pr.LeftTop + vadd
+//    };
+
+//    var rect1 = new Rect
+//    {
+//        Left = rect.Left + x,
+//        Top = rect.Top + y,
+//        Bottom = rect.Bottom,
+//        Right = rect.Right
+//    };
+
+//    return Init.ls.BuildBlazing(
+//        arenas.Get<double>(),
+//        arenas.Get<ObrazResultBlazing>(),
+//        arenas.Get<LayerResultBlazing>(), ref pr1, ref rect1)
+//        .Length;
+//});
+
+
+app.MapGet("/mapBlazing", async (HttpContext context, double x = 0, double y = 0) =>
 {
     x /= 100;
     y /= 100;
@@ -112,9 +187,8 @@ app.MapGet("/mapBlazing", (ArenasService arenas, HttpContext context, double x =
     var pr1 = new DrawProperties1
     {
         Mashtab = pr.Mashtab,
-        Scale= pr.Scale,
+        Scale = pr.Scale,
         ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
-        //LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
         LeftTop = pr.LeftTop + vadd
     };
 
@@ -126,14 +200,29 @@ app.MapGet("/mapBlazing", (ArenasService arenas, HttpContext context, double x =
         Right = rect.Right
     };
 
-    //var arenas = (Arenas)context.Items["Arenas"]!;
+    var dA = ArenaAllocator<double>.Get();
+    var oA = ArenaAllocator<ObrazResultBlazing>.Get();
+    var lA = ArenaAllocator<LayerResultBlazing>.Get();
 
-    return Init.ls.BuildBlazing(
-        arenas.Get<double>(),
-        arenas.Get<ObrazResultBlazing>(),
-        arenas.Get<LayerResultBlazing>(), ref pr1, ref rect1)
-        .Length;
+    try
+    {
+        var rusult = Init.ls.BuildBlazing(
+            dA,
+            oA,
+            lA, ref pr1, ref rect1)
+            .Length;
+
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(rusult);
+    }
+    finally
+    {
+        dA.Dispose();
+        oA.Dispose();
+        lA.Dispose();
+    }
 });
+
 //.WithTags("Map")
 //.WithSummary("Blazing Получение преобразованных геоданных (тест без реального ответа)")
 //.WithDescription("Выбирает геоданные по области, отсекает примитивы по области, оптимизирует координаты, преобразовывает к экранным")
@@ -169,7 +258,40 @@ app.MapGet("/mapJSON", (double x = 0, double y = 0) =>
 //.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
 //.Produces<Layer[]>(StatusCodes.Status200OK);
 
-app.MapGet("/mapJSONBlazing", (ArenasService arenas, HttpContext context, double x = 0, double y = 0) =>
+//app.MapGet("/mapJSONBlazing", (ArenasService arenas, double x = 0, double y = 0) =>
+//{
+//    x /= 100;
+//    y /= 100;
+
+//    var pr1 = new DrawProperties1()
+//    {
+//        Mashtab = pr.Mashtab,
+//        Scale = pr.Scale,
+//        ScaleVector = new Vector<double>([pr.Scale, -pr.Scale, pr.Scale, -pr.Scale]),
+//        LeftTop = new Vector<double>([pr.Left + x, pr.Top + y, pr.Left + x, pr.Top + y])
+//    };
+
+//    var rect1 = new Rect
+//    {
+//        Left = rect.Left + x,
+//        Top = rect.Top + y,
+//        Bottom = rect.Bottom,
+//        Right = rect.Right
+//    };
+
+//    return Init.ls.BuildBlazing(
+//        arenas.Get<double>(),
+//        arenas.Get<ObrazResultBlazing>(),
+//        arenas.Get<LayerResultBlazing>(),
+//        ref pr1, ref rect1)[..5];
+//});
+//.WithTags("Map")
+//.WithSummary("Blazing Получение преобразованных геоданных")
+//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
+//.Produces<Layer[]>(StatusCodes.Status200OK);
+
+
+app.MapGet("/mapJSONBlazing", async (HttpContext context, double x = 0, double y = 0) =>
 {
     x /= 100;
     y /= 100;
@@ -190,16 +312,28 @@ app.MapGet("/mapJSONBlazing", (ArenasService arenas, HttpContext context, double
         Right = rect.Right
     };
 
-    return Init.ls.BuildBlazing(
-        arenas.Get<double>(),
-        arenas.Get<ObrazResultBlazing>(),
-        arenas.Get<LayerResultBlazing>(),
-        ref pr1, ref rect1)[..5];
+    var dA = ArenaAllocator<double>.Get();
+    var oA = ArenaAllocator<ObrazResultBlazing>.Get();
+    var lA = ArenaAllocator<LayerResultBlazing>.Get();
+
+    try
+    {
+        var result = Init.ls.BuildBlazing(
+            dA,
+            oA,
+            lA,
+            ref pr1, ref rect1)[..5];
+
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(result);
+    }
+    finally
+    {
+        dA.Dispose();
+        oA.Dispose();
+        lA.Dispose();
+    }
 });
-//.WithTags("Map")
-//.WithSummary("Blazing Получение преобразованных геоданных")
-//.WithDescription("Выбирает геоданные по области, отсекает приметивы по оласти, оптимизирует координаты, преобразовывает к экранным")
-//.Produces<Layer[]>(StatusCodes.Status200OK);
 
 const string STR1 = "asrgfsadf12421";
 const string STR2 = "asrgfsadf12321";
@@ -227,7 +361,7 @@ app.MapGet("/naturalsort", () =>
 app.MapGet("/naturalsortblazing", () =>
 {
     var result = 0;
-    
+
     var sp1 = STR1.AsSpan();
     var sp2 = STR2.AsSpan();
     var (l1, l2) = (STR1.Length + 5, STR2.Length + 5);
